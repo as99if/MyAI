@@ -25,8 +25,13 @@ def download_llm(model_name, save_dir):
 
     print(f"Model {model_name} downloaded and saved to {save_dir}")
 
+
+def download_yolo():
+    from huggingface_hub import hf_hub_download 
+    hf_hub_download("merve/yolov9", filename="yolov9-c.pt", local_dir="./")
+
 # Example usage:
-model_name = "mlx-community/OpenELM-3B"
+#model_name = "mlx-community/OpenELM-3B"
 save_dir = "/Users/asifahmed/Development/projectKIT/llm/base_model"
 
 download_llm(model_name, save_dir)

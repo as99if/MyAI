@@ -1,0 +1,15 @@
+{
+    "api": "ollama",  // Options: "openai", "ollama", or "groq"
+    "openai_api_key": "your_openai_api_key_here",
+    "ollama_url": "http://localhost:11434/api/generate",
+    "groq_api_key": "your_groq_api_key_here",
+    "enable_object_detection": true,
+    "redis_host": "localhost",
+    "redis_port": 6379,
+    "redis_memory_db": 0,
+    "redis_conversation_history_db": 1,
+    "redis_password": null,
+    "chunk_size": 1000,
+    "chunk_overlap": 200,
+    "vector_dim": 1536
+}
