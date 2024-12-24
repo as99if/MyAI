@@ -1,0 +1,12 @@
+- ollama server
+- opencv object detection and distance computation (display) - as context 
+  - https://github.com/M-M-Akash/Real-Time-Object-Detection-Distance-Measurement-System
+  - https://github.com/paul-pias/Object-Detection-and-Distance-Measurement
+- search engine api call
+- maps api call
+- speech recognition
+- screen capture
+- vision model
+- text to speech
+
+check SiLLM for training in mlx
