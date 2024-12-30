@@ -11,5 +11,7 @@
     "redis_password": null,
     "chunk_size": 1000,
     "chunk_overlap": 200,
-    "vector_dim": 1536
+    "vector_dim": 1536,
+    "model_name": "llama3.2:1b"
+    // "model_name": "llama3.2-vision"
 }

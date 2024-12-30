@@ -343,6 +343,7 @@ class InferenceEngine:
             ]
         )
         
+        # TODO: add system instructions at the beginning ot the message
         response = self.llm.invoke([message])
         response_text = response.content if hasattr(response, 'content') else str(response)
         
@@ -355,6 +356,7 @@ class InferenceEngine:
     def _handle_text_inference(self, prompt_text: str):
         """Handle text-only inference"""
         try:
+            # TODO: add system instructions at the beginning ot the message
             response = self.conversation_chain({"question": prompt_text})
             return {
                 "user_prompt": prompt_text,

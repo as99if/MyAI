@@ -1,0 +1,27 @@
+# Use the official Ollama image as the base
+FROM ollama/ollama:latest
+
+# Set the working directory
+WORKDIR /root
+
+# Install necessary dependencies (if any)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    iproute2 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the run_ollama.sh script into the container
+COPY run_ollama.sh /root/run_ollama.sh
+
+# Give execute permissions to the script
+RUN chmod +x /root/run_ollama.sh
+
+ENV OLLAMA_HOST=0.0.0.0
+ENV OLLAMA_ORIGINS=http://0.0.0.0:11434
+
+# Expose the default Ollama port
+EXPOSE 11434
+
+# Set the entry point to sh and the command to run the script
+ENTRYPOINT ["sh", "/root/run_ollama.sh"]

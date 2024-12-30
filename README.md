@@ -1,9 +1,16 @@
-    docker build -t Dockerfile.ollama .
-    docker run -d --name ollama-server Dockerfile.ollama
+put model name in .env
+```shell
+make ollama-build
+make ollama-run
+```
+    
+
+
     python3 -m venv .venv
     pip install --upgrade pip
     pip install -r requrements.txt
 
+add system message before prompt at invoke
 
 - speech recognition
 - ollama server
@@ -27,6 +34,7 @@
 - check out https://deepinfra.com , https://deepinfra.com/meta-llama/Llama-3.2-11B-Vision-Instruct
 - check out https://speechbrain.readthedocs.io/en/latest/tutorials/basics.html
 - check out https://github.com/noshluk2/ROS2-Self-Driving-Car-AI-using-OpenCV
+- check out https://github.com/t41372/Open-LLM-VTuber
 check SiLLM for training in mlx
 
 check out https://github.com/developersdigest/ai-devices/tree/main
