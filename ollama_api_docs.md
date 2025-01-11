@@ -1,3 +1,58 @@
+
+# Commands
+
+Here are the essential Ollama command line commands:
+ollama serve: Starts the Ollama service without the desktop application12
+
+.
+ollama list: Displays available models on your system12
+
+6.
+ollama run <model>: Runs the specified model, making it ready for interaction12
+
+6.
+ollama pull <model>: Downloads a model from the registry12
+
+6.
+ollama show <model>: Displays details about a specific model12
+
+6.
+ollama ps: Lists currently running models2
+
+6.
+ollama stop <model>: Stops a running model2
+
+6.
+ollama cp <source> <destination>: Copies a model with a new name2
+
+6.
+ollama rm <model>: Removes a model from your system2
+
+6.
+ollama create <new_model> -f <modelfile>: Creates a new model from a Modelfile12
+
+6.
+ollama push <model>: Uploads a model to the registry2
+
+.
+Additional commands and options:
+ollama -h or ollama --help: Displays help information for Ollama3
+
+.
+ollama -v: Shows version information2
+
+.
+When running a model, you can use additional options:
+--format json: Outputs responses in JSON format3
+
+.
+--verbose: Provides more detailed output3
+
+.
+To exit a model session, type /bye2
+
+.
+
 # API
 
 ## Endpoints

@@ -1,34 +1,35 @@
 services:
-  ollama-server:
-    build:
-      context: .
-      dockerfile: Dockerfile.ollama_server
-      args:
-        - MODEL_NAME=${MODEL_NAME}
-    container_name: ollama-server
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    environment:
-      - OLLAMA_HOST=0.0.0.0
-      - OLLAMA_ORIGINS=http://0.0.0.0:11434
-      - MODEL_NAME=${MODEL_NAME}
-    cap_add:
-      - NET_ADMIN
+  # ollama-server:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.ollama_server
+  #     args:
+  #       - MODEL_NAME=${MODEL_NAME}
+  #   container_name: ollama-server
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+  #   environment:
+  #     - OLLAMA_HOST=0.0.0.0
+  #     - OLLAMA_ORIGINS=http://0.0.0.0:11434
+  #     - MODEL_NAME=${MODEL_NAME}
+  #   cap_add:
+  #     - NET_ADMIN
     #depends_on:
     #    - redis
 
-  # redis:
-  #  image: redis:latest
-  #  container_name: redis
-  #  ports:
-  #    - "6379:6379"
-  #  volumes:
-  #    - redis_data:/data
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
 
 volumes:
   ollama_data:
+  redis_data:
 
 
 # docker rm -f $(docker ps -aq)

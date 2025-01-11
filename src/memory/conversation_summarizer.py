@@ -3,12 +3,17 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 from datetime import datetime
 from src.inference_engine import InferenceEngine
-from src.conversation_history_service import ConversationHistoryService
 
+"""
+    
+    here, the _summarize_old_conversations method summarizes the first half of the history.. change it, so that it summarizes only the last two weeks of conversation from the timestamp in each conversation segment.
+
+this is an example of conversation history
+"""
 class ConversationSummarizer:
-    def __init__(self, engine: InferenceEngine, conversation_store: ConversationHistoryService):
+    def __init__(self, engine: InferenceEngine, conversation_history_service):
         self.engine = engine
-        self.conversation_store = conversation_store
+        self.conversation_history_service = conversation_history_service
         self.summarization_thread: Optional[threading.Thread] = None
         self.executor = ThreadPoolExecutor(max_workers=1)
         self._stop_event = threading.Event()
@@ -48,8 +53,9 @@ class ConversationSummarizer:
         Summarize and update the first half of conversation history
         """
         try:
+            # backup conversation history
             # Get all conversations
-            conversations = self.conversation_store.get_conversation_history()
+            conversations = self.conversation_history_service.get_conversation_history_backup()
             if not conversations:
                 return
 

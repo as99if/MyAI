@@ -1,5 +1,5 @@
 import json
-from inference_engine import InferenceEngine
+from src.inference_engine._inference_engine import InferenceEngine
 from screenshot_service import take_screenshot
 from siri_service import execute_siri_command
 import speech_recognition as sr
@@ -45,7 +45,11 @@ def listen(queue):
             queue.put(None)
 
 # Function to convert text to speech and play it
+
+
 def speak(text):
+    # saves audio file and plays it
+    # TODO: change it... make it parralel process to text generation, line by line... upon interruption, stop generation
     global user_interrupting
     try:
         tts = gTTS(text=text, lang='en')
@@ -67,13 +71,14 @@ def speak(text):
     except Exception as e:
         print(f"Error in text-to-speech: {e}")
 
-async def main():
+
+async def run():
     # Initialize services
     vector_memory_service = MemoryService(
         embedding_model=OpenAIEmbeddings()
     )
     conversation_store_service = ConversationHistoryService()
-    
+
     # Initialize inference engine with both memory services
     engine = InferenceEngine(
         config=config,
@@ -92,22 +97,31 @@ async def main():
     try:
         global user_interrupting
         print("Voice Assistant is running...")
-        
+
         while True:
             user_interrupting = False
             queue = Queue()
-            
+
             listen_thread = threading.Thread(target=listen, args=(queue,))
             listen_thread.start()
-            
+
             command = queue.get()
-            
+
             if command:
                 if "exit" in command:
                     print("Goodbye!")
                     break
-                
-                elif "take a screenshot" in command or "screenshot" in command:
+                # all the elifs
+                else:
+                    # Get response from the selected API (with DSPy optimization)
+                    # result = engine.infer(command)
+                    result = await engine.advanced_async_inference(command)
+
+                    # Respond to the user with AI's response
+                    print(f"Assistant: {result['response']}")
+                    speak(result["response"])
+
+                """elif "take a screenshot" in command or "screenshot" in command:
                     print("Taking a screenshot...")
                     screenshot = take_screenshot()
                     if screenshot:
@@ -154,20 +168,10 @@ async def main():
 
                     else:
                         response = "I don't see any objects I can recognize right now."
-                        speak(response)
+                        speak(response)"""
+
                 
-                else:
-                    # Get response from the selected API (with DSPy optimization)
-                    # result = engine.infer(command)
-                    result = await engine.advanced_async_inference(command)
-                    
-                    # Respond to the user with AI's response
-                    print(f"Assistant: {result['response']}")
-                    speak(result["response"])
 
     finally:
         # Clean up resources
         summarizer.stop_summarization()
-
-if __name__ == "__main__":
-    main()
