@@ -30,7 +30,7 @@ class MyAIAssistant:
         self.config = config
         self.inference_engine = inference_engine
         self.conversation_history_service = conversation_history_service
-        self.voice_reply_deactivated = self.config.get('voice_reply_deactivated', True)
+        self.voice_reply_enabled = self.config.get('voice_reply_enabled', False)
         self.device = torch.device('cpu')
         # self.device = torch.device('mps') if torch.backends.mps.is_available() else torch.device('cpu')
         # pytorch 2.5 and whisper issue with mps
@@ -62,6 +62,7 @@ class MyAIAssistant:
             name="monitor_interruption", 
             daemon=True
         )
+        # Interrupting monitoring
         # self.monitor_interruption_thread.start()
         
         
@@ -228,14 +229,14 @@ class MyAIAssistant:
                     self.spoken_text += chunk + " "
 
             print("\nSpoken text:", self.spoken_text)
-            self.remaining_text = f"Voice reply interrupted, remaining unsaid reply:\n{self.remaining_text}"
+            self.remaining_text = f"(Voice reply interrupted, remaining unsaid reply)\n{self.remaining_text}"
             print("\nRemaining text:", self.remaining_text)
             if self.conversation_history_service:
-                self.conversation_history_service.save_chat_segment([
+                self.conversation_history_service.add_conversation([
                     ('assistant', self.spoken_text)
                 ])
                 if self.remaining_text is not "":
-                    self.conversation_history_service.save_chat_segment([
+                    self.conversation_history_service.add_conversation([
                     ('assistant', self.remaining_text)
                 ])
         except Exception as e:
@@ -265,26 +266,18 @@ class MyAIAssistant:
         # temporarilty clear up conversation memory
         cm = ConversationHistoryEngine(self.config)
 
-        cm.get_conversation_history()
-        
+        cm.get_all_conversations()
+        print(cm)
         
         message = "write counting of one to ten, and then explain what is furier mathematics in three sentences. Do no write more than seven sentences."
         response_text = self.inference_engine.chat_completion(message)
         print(response_text)
         if self.conversation_history_service:
-                self.conversation_history_service.save_chat_segment([
-                    ('human', message),
-                    ('assistant', response_text)
+                self.conversation_history_service.add_conversation([
+                    ("human", message),
+                    ("assistant", response_text)
                 ])
         
-        # message = "what did I ask before?"
-        # response_text = self.inference_engine.chat_completion(message)
-        # print(response_text)
-        # if self.conversation_history_service:
-        #         self.conversation_history_service.save_chat_segment([
-        #             ('human', message),
-        #             ('assistant', response_text)
-        #         ])
         
         """while True:
             message = self.listen()
@@ -294,15 +287,21 @@ class MyAIAssistant:
             print("Transcription:", message)
             # TODO: correction with llm
             prompt = f"This is a message or a command from the user for you as an voice AI assistant:\n '{message}'\n There could be mistakes due to voice recognition or audio detection. Correct it."
-            response = self.inference_engine.chat_completion(prompt)
-            if self.voice_reply_deactivated:
+            
+            if !self.voice_reply_enabled:
+                response = self.inference_engine.chat_completion(prompt)
                 if self.conversation_history_service:
                     self.conversation_history_service.save_chat_segment([
                         ('human', message),
                         ('assistant', response)
                     ])
+            else:
+                #response = self.inference_engine.chat_completion(message)
+                #print(f"AI Reply: {response}")
             
-            print("AI Corrected Transcription:", response)
+                # Speak the AI's reply with interruption handling
+                # self.voice_reply(response)
+                print("AI Corrected Transcription:", response)
             
             if "exit" in message.lower():
                 print("Exiting...")
@@ -310,8 +309,4 @@ class MyAIAssistant:
                 break
             
             
-            #reply = self.inference_engine.chat_completion(message)
-            #print(f"AI Reply: {reply}")
-            
-            # Speak the AI's reply with interruption handling
-            #self.voice_reply(reply)"""
+            )"""

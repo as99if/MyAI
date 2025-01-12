@@ -1,4 +1,6 @@
 asyncio
+redis
+asyncio-redis
 pytest-asyncio
 openai
 torch
@@ -14,7 +16,6 @@ psycopg2-binary
 dspy-ai
 ultralytics
 pytesseract
-aioredis
 openai-whisper
 setuptools-rust
 pyaudio

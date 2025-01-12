@@ -9,8 +9,16 @@ curl silero models for stt tts and vad
 python3 -m venv .venv
 pip install --upgrade pip
 pip install -r requrements.txt
-docker compose -f docker-compose.ollama-server.yml  # for ollama server and redis
+make servers-run  # for ollama server and redis
+python -m main
 ```
+
+Run tests
+```shell
+python -m pytest tests/test_conversation_history_service.py -v
+
+```
+
 - speech recognition
 - ollama server
 - https://github.com/ollama/ollama-python
@@ -80,7 +88,7 @@ nice one - https://github.com/browser-use/browser-use
 sota stt tts
 
 
-
+macmos to see cpu gpu stats on macos
 
 # Basic Docker Commands
 # Build an image

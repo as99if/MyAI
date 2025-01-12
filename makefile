@@ -21,26 +21,26 @@ help:
 	@echo "  help     					- Display this help message"
 
 # Build the Docker image using the ollama-build-script.sh
-ollama-build:
+servers-build:
 	@echo "Building the Docker image..."
 	@docker-compose -f docker-compose.ollama-server.yml build
 
-ollama-build-no-cahce:
+servers-build-no-cahce:
 	@echo "Building the Docker image..."
 	@docker-compose -f docker-compose.ollama-server.yml build --no-cache
 
 # Run the Docker container using docker-compose
-ollama-run:
+servers-run:
 	@echo "Running the Docker container..."
-	@docker-compose -f docker-compose.ollama-server.yml up
+	@docker-compose -f docker-compose.servers.yml up
 
 # Stop the Docker container
-ollama-stop:
+servers-stop:
 	@echo "Stopping the Docker container..."
-	@docker-compose -f docker-compose.ollama-server.yml down
+	@docker-compose -f docker-compose.servers.yml down
 
 # Clean up the Docker environment
-ollama-clean: stop
+servers-clean: stop
 	@echo "Removing Docker images..."
 	@docker rmi ollama_server_image
 
