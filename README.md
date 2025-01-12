@@ -5,11 +5,12 @@ make ollama-run
 ```
     
 curl silero models for stt tts and vad
-
-    python3 -m venv .venv
-    pip install --upgrade pip
-    pip install -r requrements.txt
-
+```shell
+python3 -m venv .venv
+pip install --upgrade pip
+pip install -r requrements.txt
+docker compose -f docker-compose.ollama-server.yml  # for ollama server and redis
+```
 - speech recognition
 - ollama server
 - https://github.com/ollama/ollama-python

@@ -1,5 +1,5 @@
 import os
-import aioredis
+from redis import asyncio as aioredis
 import json
 from datetime import datetime
 from typing import Dict, Any, List, Tuple
@@ -9,15 +9,19 @@ import logging
 logger = logging.getLogger(__name__)
 
 class ConversationHistoryEngine:
-    async def __init__(self, config):
+    def __init__(self, config):
         self.config = config
+        self.initialize_redis()
+    
+    async def initialize_redis(self):
         # Initialize Redis client with config
-        self.redis_client = await aioredis.create_redis_pool(
-            (config.get('redis_host', 'localhost'),
-             config.get('redis_port', 6379)),
-            db=config.get('redis_live_conversation_history_db', 0),
-            password=config.get('redis_password', None),
-            encoding='utf-8'
+        self.redis_client = await aioredis.Redis(
+            host=self.config.get('redis_host', 'localhost'),
+            port=self.config.get('redis_port', 6379),
+            db=self.config.get('redis_live_conversation_history_db', 0),
+            password=self.config.get('redis_password', None),
+            encoding='utf-8',
+            decode_responses=True
         )
         
         # Configure persistence

@@ -263,19 +263,19 @@ class MyAIAssistant:
     
     def run(self):
         # temporarilty clear up conversation memory
-        # cm = ConversationHistoryEngine(self.config)
+        cm = ConversationHistoryEngine(self.config)
 
-        # cm.get_conversation_history()
+        cm.get_conversation_history()
         
         
-        # message = "write counting of one to ten, and then explain what is furier mathematics in three sentences. Do no write more than seven sentences."
-        # response_text = self.inference_engine.chat_completion(message)
-        # print(response_text)
-        # if self.conversation_history_service:
-        #         self.conversation_history_service.save_chat_segment([
-        #             ('human', message),
-        #             ('assistant', response_text)
-        #         ])
+        message = "write counting of one to ten, and then explain what is furier mathematics in three sentences. Do no write more than seven sentences."
+        response_text = self.inference_engine.chat_completion(message)
+        print(response_text)
+        if self.conversation_history_service:
+                self.conversation_history_service.save_chat_segment([
+                    ('human', message),
+                    ('assistant', response_text)
+                ])
         
         # message = "what did I ask before?"
         # response_text = self.inference_engine.chat_completion(message)
@@ -286,7 +286,7 @@ class MyAIAssistant:
         #             ('assistant', response_text)
         #         ])
         
-        while True:
+        """while True:
             message = self.listen()
             if message is None:
                 continue
@@ -295,7 +295,7 @@ class MyAIAssistant:
             # TODO: correction with llm
             prompt = f"This is a message or a command from the user for you as an voice AI assistant:\n '{message}'\n There could be mistakes due to voice recognition or audio detection. Correct it."
             response = self.inference_engine.chat_completion(prompt)
-            if voice_reply_deactivated:
+            if self.voice_reply_deactivated:
                 if self.conversation_history_service:
                     self.conversation_history_service.save_chat_segment([
                         ('human', message),
@@ -314,4 +314,4 @@ class MyAIAssistant:
             #print(f"AI Reply: {reply}")
             
             # Speak the AI's reply with interruption handling
-            #self.voice_reply(reply)
+            #self.voice_reply(reply)"""

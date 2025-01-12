@@ -9,7 +9,8 @@ with open("src/config.json", "r") as f:
 
 if __name__ == "__main__":
     # check for conversation backup and summarize if needed in a different thread
-    conveversation_history_service = ConversationHistoryEngine()
-    innference_engine = InferenceEngine(config, conveversation_history_service)
-    assistant = MyAIAssistant(config, innference_engine, conveversation_history_service) 
-    
+    conveversation_history_service = ConversationHistoryEngine(config=config)
+    innference_engine = InferenceEngine(
+        config=config, conversation_history_service=conveversation_history_service)
+    assistant = MyAIAssistant(config=config, inference_engine=innference_engine,
+                              conversation_history_service=conveversation_history_service)
