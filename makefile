@@ -23,11 +23,11 @@ help:
 # Build the Docker image using the ollama-build-script.sh
 servers-build:
 	@echo "Building the Docker image..."
-	@docker-compose -f docker-compose.ollama-server.yml build
+	@docker-compose -f docker-compose.servers.yml build
 
 servers-build-no-cahce:
 	@echo "Building the Docker image..."
-	@docker-compose -f docker-compose.ollama-server.yml build --no-cache
+	@docker-compose -f docker-compose.servers.yml build --no-cache
 
 # Run the Docker container using docker-compose
 servers-run:

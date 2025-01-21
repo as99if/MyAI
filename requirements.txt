@@ -23,3 +23,11 @@ pydub
 keyboard
 simpleaudio
 silero
+Pillow
+transformers
+librosa
+soundfile
+vector-quantize-pytorch
+vocos
+#decord
+#moviepy

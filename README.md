@@ -1,9 +1,18 @@
-put model name in .env
+MyAI
+
+Local AI voice assistant with functionalities, targetted for edge devices.
+
+Used stack:
+- llama-cpp-python
+- whisper-cpp-python
+- kokoro-onnx
+- redis
+
 ```shell
-make ollama-build
-make ollama-run
+make servers-build
+make servers-run
 ```
-    
+  
 curl silero models for stt tts and vad
 ```shell
 python3 -m venv .venv
@@ -18,6 +27,30 @@ Run tests
 python -m pytest tests/test_conversation_history_service.py -v
 
 ```
+----
+
+
+llama.cpp python
+```shell
+# Linux and Mac
+CMAKE_ARGS="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS -DGGML_METAL=on" \
+  pip install llama-cpp-python
+```
+
+
+
+
+----------
+some functionality ideas (research like):
+1. encrypt prompt
+2. connect to internet
+3. search and gather resources
+4. disconnect internet
+5. create response and information material (markdown, smmary etc.)
+6. iterate in background
+6. save in knowledge base
+6. respond when asked
+---
 
 - speech recognition
 - ollama server
@@ -44,33 +77,20 @@ python -m pytest tests/test_conversation_history_service.py -v
 - maps api call
 - anthropic api
 - kv caching
-- check out https://deepinfra.com , https://deepinfra.com/meta-llama/Llama-3.2-11B-Vision-Instruct
-- check out https://speechbrain.readthedocs.io/en/latest/tutorials/basics.html
-- check out https://github.com/noshluk2/ROS2-Self-Driving-Car-AI-using-OpenCV
-- check out https://github.com/t41372/Open-LLM-VTuber
-- check out https://github.com/bigsk1/voice-chat-ai/tree/main
-- check out https://github.com/chigkim/VOLlama
-- * check out https://github.com/apeatling/ollama-voice-mac/tree/trunk
-- * check out https://github.com/huggingface/speech-to-speech
-- * check out https://github.com/ictnlp/LLaMA-Omni/tree/main
-- check out https://github.com/jlonge4/local_llama/blob/main/local_llama_v3.py
-https://github.com/mudler/LocalAI
-speech engine https://github.com/netease-youdao/EmotiVoice
 
-no stt, llm, and tts... any to any model connected with good llm and internet
-- https://pytorch.org/hub/snakers4_silero-models_tts/
-- https://github.com/janhq/WhisperSpeech/tree/main/ichigo-whisper
-- https://huggingface.co/pyannote/segmentation
-- https://huggingface.co/gpt-omni/mini-omni2
-- https://github.com/suno-ai/bark
-https://huggingface.co/facebook/seamless-m4t-v2-large
-https://github.com/Leon-Sander/Local-Multimodal-AI-Chat
+https://github.com/OpenBMB/MiniCPM-o/blob/main/web_demos/minicpm-o_2.6/model_server.py    - nos stable ollama or llama.cpp yet
 
-https://github.com/juliuskunze/speechless
-https://github.com/uukuguy/speechless
-check SiLLM for training in mlx
+*** https://github.com/OpenBMB/MiniCPM-o?tab=readme-ov-file#speech-conversation
 
-check out https://github.com/developersdigest/ai-devices/tree/main
+
+https://github.com/OpenBMB/IoA
+
+https://modelbest.feishu.cn/wiki/RnjjwnUT7idMSdklQcacd2ktnyN
+
+
+- https://github.com/carloscdias/whisper-cpp-python/blob/main/whisper_cpp_python/whisper.py
+
+
 
 
 Gemini Map explorer with maps and gemini api
@@ -85,7 +105,7 @@ Gemini Map explorer with maps and gemini api
 
 nice one - https://github.com/browser-use/browser-use
 
-sota stt tts
+
 
 
 macmos to see cpu gpu stats on macos

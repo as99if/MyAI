@@ -1,8 +1,7 @@
 {
     "voice_reply_deactivated": true,
-    "api": "ollama",  
-    "ollama_url": "http://localhost:11434/api/generate",
-    "ollama_model_name": "llama3.2:latest",
+    "omni_mode": true,
+    "api": "llama_cpp_python",
     "groq_api_key": "your_groq_api_key_here",
     "groq_model_name": "",
     "enable_object_detection": false,

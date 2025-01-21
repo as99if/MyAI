@@ -16,8 +16,8 @@ services:
   #     - MODEL_NAME=${MODEL_NAME}
   #   cap_add:
   #     - NET_ADMIN
-    #depends_on:
-    #    - redis
+    # depends_on:
+    #   - redis
 
   redis:
     image: redis/redis-stack:latest
@@ -38,8 +38,8 @@ services:
       retries: 3
 
 volumes:
-  ollama_data:
-    driver: local
+  # ollama_data:
+  #  driver: local
   redis_data:
     driver: local
 
