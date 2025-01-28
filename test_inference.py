@@ -4,7 +4,7 @@ from typing import List, Optional
 import time
 from src.core.clear_memory import clear_memory
 from src.inference_engine.inference_engine import InferenceEngine
-from src.memory.conversation_history_service import ConversationHistoryEngine
+from src.memory_processor.conversation_history_engine import ConversationHistoryEngine
 
 async def tests():
     # Test configuration

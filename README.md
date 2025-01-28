@@ -1,10 +1,13 @@
+https://github.com/AK391/llama-3.2-3b-voice/tree/main
+https://github.com/AK391/ollama-gradio
+https://github.com/AK391/moshi
 MyAI
 
-Local AI voice assistant with functionalities, targetted for edge devices.
+Lightweight local AI voice assistant with functionalities, targetted for edge devices.
 
 Used stack:
-- llama-cpp-python
-- whisper-cpp-python
+- llama.cpp (llama-cpp-python)
+- whisper.cpp (pywhispercpp)
 - kokoro-onnx
 - redis
 
@@ -16,6 +19,7 @@ make servers-run
 curl silero models for stt tts and vad
 ```shell
 python3 -m venv .venv
+brew install ffmpeg or apt-get install ffmpeg
 pip install --upgrade pip
 pip install -r requrements.txt
 make servers-run  # for ollama server and redis
@@ -41,34 +45,38 @@ CMAKE_ARGS="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS -DGGML_METAL=on" \
 
 
 ----------
-some functionality ideas (research like):
-1. encrypt prompt
-2. connect to internet
-3. search and gather resources
-4. disconnect internet
-5. create response and information material (markdown, smmary etc.)
-6. iterate in background
-6. save in knowledge base
-6. respond when asked
+
+... encrypt prompt meh
+
+3. Tools - concurrent tool use and create markitdown and then response
+3.0. connect/disconnect to internet
+3.1. search and gather resources with gemini - tools **
+3.2. search and gather resources with local and web browser - tools **
+3.3. create response and information material (markdown, summary etc.) - ms markitdown *
+3.4. searches iterate in background
+3.5. object detection and distance mesurement with yolo-v9 and response as markdown.
+- on finish save in conversation history, and notify tool caller
+- process status shared with tool caller
 ---
 
-- speech recognition
-- ollama server
-- https://github.com/ollama/ollama-python
-- groq api
-- gemini api
-- maps
-- google search
-- function calling
-- api router
-- vision model
-- https://dspy.ai to optimize prompt if configured
-- conversation history, summarization of a part of the history on application start
-- vector storage as memory conversation hitory and knowledge base
-- object detection and distance mesurement with yolo-v9
-- screen capture
-- multiprocessing, thread pooling and asynchronous processes
-- text to speech
+- inference: speech recognition whisper.cpp
+- text to speech kokoro
+- concurrent and asynchronous processes
+- conversation history, summarization process on application start (it's on schedule from the inside, backup will not change)
+- base inference: llama.cpp (tool caller)
+- tool inference: groq api
+- tool inference: gemini api
+- tool inference: deepseek
+- tool: siri
+- tool: rag (only local)
+- function calling/api router (tool call and process response)
+- vector storage as memory, the backup conversation history and knowledge bases
+- base and tool - inference: vision models: ^ 
+- vision processing: object detection
+- vision processing: screen capture
+- tool vision processing: video capture and process vision model response concurrently
+- tool infernece: camera capture and process vision model response concurrently
+
 -------------------------------
 
 
@@ -78,18 +86,10 @@ some functionality ideas (research like):
 - anthropic api
 - kv caching
 
-https://github.com/OpenBMB/MiniCPM-o/blob/main/web_demos/minicpm-o_2.6/model_server.py    - nos stable ollama or llama.cpp yet
-
-*** https://github.com/OpenBMB/MiniCPM-o?tab=readme-ov-file#speech-conversation
-
-
-https://github.com/OpenBMB/IoA
-
-https://modelbest.feishu.cn/wiki/RnjjwnUT7idMSdklQcacd2ktnyN
-
+   - nos stable ollama or llama.cpp yet
 
 - https://github.com/carloscdias/whisper-cpp-python/blob/main/whisper_cpp_python/whisper.py
-
+- https://github.com/thewh1teagle/kokoro-onnx/blob/main/examples/play.py
 
 
 

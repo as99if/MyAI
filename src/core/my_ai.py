@@ -4,12 +4,13 @@
 
 import os
 from datetime import datetime
-import whisper
 import pyaudio
 import wave
 import numpy as np
 import queue
 import time
+import gc
+import torch
 from pydub import AudioSegment
 import math
 import simpleaudio as sa
@@ -19,27 +20,20 @@ import gc
 import threading
 import time
 import signal
-import torch
-from whisper_cpp_python import Whisper
 import pprint
-from omegaconf import OmegaConf
-from src.core.clear_memory import clear_memory
-from src.memory.conversation_history_service import ConversationHistoryEngine
-import asyncio
-import sounddevice as sd
-from kokoro_onnx import Kokoro
 
 
 class MyAIAssistant:
-    def __init__(self, config, inference_engine, conversation_history_service):
+    def __init__(self, config, inference_engine, conversation_history_engine, asr_engine, tts_engine, vision_history_engine: None):
+        self.computer = None
         self.config = config
         self.inference_engine = inference_engine
-        self.conversation_history_service = conversation_history_service
+        self.conversation_history_engine = conversation_history_engine
         self.voice_reply_enabled = self.config.get(
             'voice_reply_enabled', False)
-        self.whisper = None
 
-        self.init_speech_models()
+        self.tts_engine = tts_engine
+        self.asr_engine = asr_engine
 
         # PyAudio configuration for audio detection
         self.CHUNK = 1024 * 4
@@ -47,7 +41,7 @@ class MyAIAssistant:
         self.CHANNELS = 1
         self.RATE = 16000  # 44100
         self.WAVE_OUTPUT_FILENAME = "temp_audio.wav"
-        self.p = pyaudio.PyAudio()
+        self.pyaudio = pyaudio.PyAudio()
 
         # Audio detection parameters
         self.THRESHOLD = 500
@@ -61,13 +55,13 @@ class MyAIAssistant:
         self.CHARS_PER_SECOND = 15
 
         # Start the interruption monitoring thread
-        self.monitor_interruption_thread = threading.Thread(
-            target=self.monitor_interruption,
-            name="monitor_interruption",
+        self.monitor_audio_interruption_thread = threading.Thread(
+            target=self.monitor_audio_interruption,
+            name="monitor_audio_interruption",
             daemon=True
         )
         # Interrupting monitoring
-        self.monitor_interruption_thread.start()
+        self.monitor_audio_interruption_thread.start()
 
         # Set up signal handler for graceful exit
         signal.signal(signal.SIGINT, self.exit_gracefully)
@@ -75,35 +69,26 @@ class MyAIAssistant:
 
         self.run()
 
-    def init_speech_models(self):
-        # Load Whisper model for speech-to-text
-        self.whisper = Whisper(model_path="./models/ggml-tiny.bin")
-        self.params.n_threads = 2
-        self.params.print_special = False
-        self.params.print_progress = True
-        self.params.print_realtime = True
-        self.params.print_timestamps = False
-
     def split_text_into_chunks(self, text, chunk_size=100):
-         """Split text into chunks for progressive TTS"""
-         words = text.split()
-         chunks = []
-         current_chunk = []
-         current_size = 0
+        """Split text into chunks for progressive TTS"""
+        words = text.split()
+        chunks = []
+        current_chunk = []
+        current_size = 0
 
-         for word in words:
-             if current_size + len(word) > chunk_size:
-                 chunks.append(' '.join(current_chunk))
-                 current_chunk = [word]
-                 current_size = len(word)
-             else:
-                 current_chunk.append(word)
-                 current_size += len(word)
+        for word in words:
+            if current_size + len(word) > chunk_size:
+                chunks.append(' '.join(current_chunk))
+                current_chunk = [word]
+                current_size = len(word)
+            else:
+                current_chunk.append(word)
+                current_size += len(word)
 
-         if current_chunk:
-             chunks.append(' '.join(current_chunk))
+        if current_chunk:
+            chunks.append(' '.join(current_chunk))
 
-         return chunks
+        return chunks
 
     def listen(self, duration=5):
         """Record and transcribe user speech"""
@@ -114,7 +99,7 @@ class MyAIAssistant:
             audio_queue.put(in_data)
             return (None, pyaudio.paContinue)
 
-        stream = self.p.open(
+        stream = self.pyaudio.open(
             format=self.FORMAT,
             channels=self.CHANNELS,
             rate=self.RATE,
@@ -136,13 +121,14 @@ class MyAIAssistant:
         # Save the recorded audio to a temporary WAV file
         with wave.open(self.WAVE_OUTPUT_FILENAME, 'wb') as wf:
             wf.setnchannels(self.CHANNELS)
-            wf.setsampwidth(self.p.get_sample_size(self.FORMAT))
+            wf.setsampwidth(self.pyaudio.get_sample_size(self.FORMAT))
             wf.setframerate(self.RATE)
             wf.writeframes(b''.join(frames))
 
         try:
             # Use Whisper CPP for transcription
-            result = self.whisper.transcribe(self.WAVE_OUTPUT_FILENAME)
+            result = self.asr_engine.engine.transcribe(
+                self.WAVE_OUTPUT_FILENAME, new_segment_callback=print)
 
             # Clean up temporary file
             if os.path.exists(self.WAVE_OUTPUT_FILENAME):
@@ -176,10 +162,8 @@ class MyAIAssistant:
                     self.remaining_text = ' '.join(chunks[i:])
                     break
 
-                # Generate audio using Silero TTS
-                kokoro = Kokoro("kokoro-v0_19.onnx", "voices.json")
-                samples, self.kokoro_sample_rate = kokoro.create(
-                    [chunk], voice="af_sarah", speed=1.0, lang="en-us"
+                samples, self.kokoro_sample_rate = self.tts_engine.engine.create(
+                    [chunk], voice="am_adam", speed=0.92, lang="en-us"
                 )
                 print("Playing audio...")
                 wave_obj = sa.WaveObject(
@@ -208,18 +192,22 @@ class MyAIAssistant:
             print("\nSpoken text:", self.spoken_text)
             self.remaining_text = f"(Voice reply interrupted, remaining unsaid reply)\n{self.remaining_text}"
             print("\nRemaining text:", self.remaining_text)
-            if self.conversation_history_service:
-                self.conversation_history_service.add_conversation([
-                    ('assistant', self.spoken_text)
-                ])
-                if self.remaining_text != "":
-                    self.conversation_history_service.add_conversation([
-                    ('assistant', self.remaining_text)
-                ])
+            
+            return self.spoken_text, self.remaining_text
         except Exception as e:
             print(f"Error in text-to-speech: {e}")
 
-    def monitor_interruption(self):
+    def monitor_camera_loop(self):
+        """Monitor the camera loop for interruptions"""
+        while True:
+            if keyboard.is_pressed('.'):
+                self.interruption = True
+            else:
+                self.interruption = False
+            time.sleep(0.1)
+    
+    
+    def monitor_audio_interruption(self):
         """Continuously check if space key is pressed"""
         while True:
             if keyboard.is_pressed('space'):
@@ -228,44 +216,116 @@ class MyAIAssistant:
                 self.interruption = False
             time.sleep(0.1)  # Prevent busy-waiting
 
-    def exit_gracefully(self, signum, frame):
+    
+
+    
+    def backup_conversation_history(self):
+        """Backup conversation history to a file"""
+        
+        
+        
+    def __del__(self):
+        """Cleanup method for graceful exit"""
+        try:
+            # Delete all PyTorch tensors and models
+            for obj in gc.get_objects():
+                if torch.is_tensor(obj):
+                    del obj
+
+            # Clear conversation history
+            if hasattr(self, 'conversation_history_service'):
+                self.conversation_history_engine.clear()
+
+            # Release TTS and ASR engines
+            if hasattr(self, 'tts_engine'):
+                del self.tts_engine
+            if hasattr(self, 'asr_engine'):
+                del self.asr_engine
+
+            # Clear audio resources
+            if hasattr(self, 'stream'):
+                self.stream.stop_stream()
+                self.stream.close()
+            if hasattr(self, 'audio'):
+                self.audio.terminate()
+
+            # Remove temporary files
+            if os.path.exists(self.WAVE_OUTPUT_FILENAME):
+                os.remove(self.WAVE_OUTPUT_FILENAME)
+
+            # Force GPU memory cleanup
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
+        except Exception as e:
+            print(f"Error during cleanup: {e}")
+        finally:
+            # Ensure system resources are released
+            gc.collect()
+
+    def exit_gracefully(self):
         """Handle exiting the program gracefully"""
+        
         print("Exiting and clearing loaded model...")
-        self.monitor_interruption_thread.join(timeout=1)
-        self.p.terminate()
-        clear_memory()
+        self.monitor_audio_interruption_thread.join(timeout=1)
+        self.pyaudio.terminate()
+        self.__del__()
         # backup conversation memory
-        self.inference_engine.conversation_history_service.backup_conversation_history()
         exit(0)
 
-    def run(self):
-
+    def __run__(self):
+        # memory procesor and conversation summarizer and all those things will run on call of this function
+        # maybe for creating conversation summary every  weeks, we can use a timer to call the function that creates the summary to make context smaller
+        # self.memory_processor.start_memory_processing()
         while True:
             message = self.listen()
             if message is None:
                 continue
 
             print("Transcription:", message)
-            # TODO: correction with llm
-            prompt = f"This is a message or a command from the user for you as an voice AI assistant:\n '{message}'\n There could be mistakes due to voice recognition or audio detection. Correct it."
-
-            if not self.voice_reply_enabled:
-                response = self.inference_engine.chat_completion(prompt)
-                if self.conversation_history_service:
-                    self.conversation_history_service.save_chat_segment([
-                        ('human', message),
-                        ('assistant', response)
+            if self.conversation_history_engine:
+                self.conversation_history_engine.add_conversation([
+                    {
+                        "role": "human", "content": message, type: "user_message", "timestamp": datetime.now().isoformat()
+                    },
+                ])
+            response = self.inference_engine.chat_completion(message)
+            # other data to keep in history
+            response = response['choices'][0]['message']['content']
+            if self.voice_reply_enabled:
+                # Speak the Computer's reply with interruption handling
+                spoken_reply, unspoken_reply = self.voice_reply(response)
+                if self.conversation_history_engine:
+                    self.conversation_history_engine.add_conversation([
+                        {
+                            "role": "computer", "content": self.spoken_text, type: "spoken_computer_message", "timestamp": datetime.now().isoformat()
+                        }
                     ])
+                    if self.remaining_text != "":
+                        self.conversation_history_engine.add_conversation([
+                            {
+                            "role": "computer", "content": self.spoken_text, type: "unspoken_remaining_computer_message", "timestamp": datetime.now().isoformat()
+                        }
+                    ])
+                print(f"Computer Reply: {spoken_reply}")
+                
             else:
-                # response = self.inference_engine.chat_completion(message)
-                # print(f"AI Reply: {response}")
-
-                # Speak the AI's reply with interruption handling
-                # self.voice_reply(response)
-                print("AI Corrected Transcription:", response)
-
-            if "exit" in message.lower():
-                print("Exiting...")
-                clear_memory()
-                break
+                print(f"Computer Reply: {response}")
+                if self.conversation_history_engine:
+                    self.conversation_history_engine.add_conversation([
+                        {
+                            "role": "computer", "content": response, type: "computer_message", "timestamp": datetime.now().isoformat()
+                        }
+                    ])
+                
             
+                
+            if "clean and shutdown" in message.lower():
+                print("Exiting...")
+                self.exit_gracefully()
+                break
+    
+    def run(self):
+        self.computer = threading.Thread(target=self.__run__, name="computer")
+        self.computer.start()
+        self.computer.join()

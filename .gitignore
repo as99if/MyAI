@@ -8,3 +8,7 @@ venv/*
 SiLLM
 SiLLM/*
 */SiLLM
+src/inference_engine/llm
+**/llm/*
+src/speech_engine/models
+**/models/*
