@@ -42,7 +42,12 @@ CMAKE_ARGS="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS -DGGML_METAL=on" \
 ```
 
 
+---
 
+google cloud console api's (asif.drmc21 - project Gemini API)
+(https://console.cloud.google.com/google/maps-apis/api-list?inv=1&invt=AboExg&project=gen-lang-client-0930623728)
+(https://developers.google.com/maps/documentation/route-optimization/client-libraries#python)
+https://github.com/googlemaps/google-maps-services-python
 
 ----------
 

@@ -1,3 +1,4 @@
+from asyncio import subprocess
 import json
 import json
 import logging
@@ -7,7 +8,7 @@ from pathlib import Path
 
 from src.ai_configurations.app_configuration import AppConfiguration
 from src.core.my_ai import MyAIAssistant
-from src.inference_engine.inference_engine import InferenceEngine
+from src.inference_engine.inference_processor import InferenceProcessor
 from src.inference_engine.inference_server import InferenceServer
 from src.memory_processor.conversation_history_engine import ConversationHistoryEngine
 from src.speech_engine.speech_service import ASREngine, TTSEngine
@@ -35,24 +36,15 @@ def __run__():
         asyncio.run(conveversation_history_engine.connect())
         logger.info("Connected to conversation history service")
         
-        innference_engine = InferenceEngine(
-            config=config, conversation_history_service=conveversation_history_engine)
+        innference_processor = InferenceProcessor(
+            conversation_history_service=conveversation_history_engine)
+
+        innference_processor._check_inference_server_health()
+        # check inference server health
         logger.info("LLM initialized successfully")
         
-        server = InferenceServer(config, innference_engine)
         
-        def _start_inference_server():
-            asyncio.run(server.start_server(
-                host=config.get("inference_server_host", "0.0.0.0"),
-                port=config.get("inference_server_port", 50001)
-            ))
-            logger.info("Inference server initialized successfully")
-         
-        q = multiprocessing.Process(target=_start_inference_server, name="computer-inference-server")
-        q.start()
-        q.join()
-        
-        assistant = MyAIAssistant(config=config, inference_engine=innference_engine,
+        assistant = MyAIAssistant(innference_processor=innference_processor,
                                   conversation_history_service=conveversation_history_engine)
         logger.info("AI Assistant initialized successfully")
 

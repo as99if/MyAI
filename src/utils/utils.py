@@ -14,3 +14,15 @@ def load_config(path: str = "src/config.json"):
     except json.JSONDecodeError:
         logger.error("Invalid JSON in config file")
         raise
+    
+def load_prompt(path: str = "src/prompts/system_prompts.json"):
+    prompt_path = Path(path)
+    try:
+        with open(prompt_path, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        logger.error(f"Config file not found at {prompt_path}")
+        raise
+    except json.JSONDecodeError:
+        logger.error("Invalid JSON in config file")
+        raise

@@ -1,24 +1,4 @@
 services:
-  # ollama-server:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile.ollama_server
-  #     args:
-  #       - MODEL_NAME=${MODEL_NAME}
-  #   container_name: ollama-server
-  #   ports:
-  #     - "11434:11434"
-  #   volumes:
-  #     - ollama_data:/root/.ollama
-  #   environment:
-  #     - OLLAMA_HOST=0.0.0.0
-  #     - OLLAMA_ORIGINS=http://0.0.0.0:11434
-  #     - MODEL_NAME=${MODEL_NAME}
-  #   cap_add:
-  #     - NET_ADMIN
-    # depends_on:
-    #   - redis
-
   redis-server:
     image: redis/redis-stack:latest
     container_name: redis-json
@@ -29,7 +9,7 @@ services:
       - redis_data:/data
     command: redis-stack-server --appendonly yes --appendfsync everysec
     networks:
-      - redis-network
+      - myai-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -37,15 +17,18 @@ services:
       timeout: 5s
       retries: 3
 
+
 volumes:
-  # ollama_data:
-  #  driver: local
+  models:
+    driver: local
+  llama_cpp_data:
+    driver: local
   redis_data:
     driver: local
 
 networks:
-  redis-network:
-    name: redis_network
+  myai-network:
+    name: myai-network
     driver: bridge
 # docker rm -f $(docker ps -aq)
 # docker rmi $(docker images -q) -f

@@ -1,4 +1,4 @@
- """
+"""
  MLXVisionEngine: A comprehensive vision processing engine using MLX and YOLO.
 
 This engine provides capabilities for:
@@ -69,60 +69,57 @@ from typing import Any
 import mlx.core as mx
 from mlx_vlm import load, generate
 from mlx_vlm.prompt_utils import apply_chat_template
-from mlx_vlm.utils import load_config
+from mlx_vlm.utils import load_config as load_model_config
 from huggingface_hub import snapshot_download
 
 from src.memory_processor.vision_history_engine import VisionHistoryEngine
+from src.utils.download_from_hugginface import ModelDownloader
 from src.vision_processor.object_detection_engine import ObjectDetectionEngine
 from src.vision_processor.screenshot_service import take_screenshot
-
+from src.utils.utils import load_config
 
 class MLXVisionEngine:
-    def __init__(self, config):
-
+    def __init__(self):
+        self.config = load_config()
         self.computer_vision = None
         self.vision_memory_engine = None
         self.object_detection_engine = None
         self.if_in_camera_loop = False
-        self.config = config
+        # self.config = config
         self.model = None
         self.processor = None
         self.model_config = None
         self.if_model_loaded = False
-        self.model_name = "mlx-community/SmolVLM-Instruct-8bit"
+        self.model_name = self.config.get('vlm')
         self.loop_vision_memory = [],
         self.memory_limit = 500
 
     async def _initialize(self):
         self.if_model_loaded = False
         self.vision_memory_engine = VisionHistoryEngine(self.config)
-        self.vision_memory_engine.connect()
+        # await self.vision_memory_engine.connect()
 
-        model_path = f".models/{self.model_name}"
+        model_path = f"src/vision_processor/models/{self.model_name}"
 
         try:
             try:
                 self.model, self.processor = load(model_path)
             except Exception as e:
-                await self.download_model(self.model_name, model_path)
+                _model_name = f"mlx-community/{self.model_name}"
+                md = ModelDownloader(cache_dir="./models")
+                md.download_model(_model_name, model_path)
                 self.model, self.processor = load(model_path)
+            
+            # print(self.model)
         except Exception as e:
             print(f"Error loading model: {e}")
             raise e
-        self.model.get()
-        self.model_config = load_config(model_path)
+        # self.model.get()
+        
+        self.model_config = load_model_config(model_path)
         self.if_model_loaded = True
 
-    def download_model(self, model_name, model_path):
-        """Download model from HuggingFace if not present"""
-        print(f"Downloading model {model_name}...")
-        os.makedirs(model_path, exist_ok=True)
-        snapshot_download(
-            repo_id=model_name,
-            local_dir=model_path,
-            ignore_patterns=["*.md", "*.txt"]
-        )
-        print("Model downloaded successfully!")
+    
 
     def _add_to_memory(self, response):
         """Add response to vision memory with size limit"""
@@ -171,8 +168,8 @@ class MLXVisionEngine:
             
 
             # Add response to memory
-            self._add_to_memory(response.[".."][".."])
-            return response[".."]
+            # self._add_to_memory(response.[".."][".."])
+            return response
         except Exception as e:
             print(f"Error generating response: {e}")
             raise e
@@ -318,3 +315,7 @@ class MLXVisionEngine:
         self.computer_vision.start()
         self.computer_vision.join()
         # p.is_alive()
+
+
+# m = MLXVisionEngine()
+# asyncio.run(m._initialize())

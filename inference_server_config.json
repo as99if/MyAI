@@ -1,0 +1,27 @@
+{
+    "host": "0.0.0.0",
+    "port": 50001,
+    "models": [
+        {
+            "model": "/Users/asifahmed/Development/MyAI/models/llm/Llama-3.2-3B-Instruct-Q8_0.gguf",
+            "model_alias": "llama3.2-3b-instruct",
+            "chat_format": "chatml",
+            "n_gpu_layers": -1,
+            "offload_kqv": true,
+            "n_threads": 12,
+            "n_batch": 512,
+            "n_ctx": 2048
+        },
+        {
+            "model": "/Users/asifahmed/Development/MyAI/models/llm/Llama-3.2-3B-Instruct-Q8_0.gguf",
+            "model_alias": "llava",
+            "chat_format": "llava-1-5",
+            "clip_model_path": "/Users/asifahmed/Development/MyAI/models/llm/Llama-3.2-3B-Instruct-Q8_0.gguf",
+            "n_gpu_layers": -1,
+            "offload_kqv": true,
+            "n_threads": 12,
+            "n_batch": 512,
+            "n_ctx": 2048
+        }
+    ]
+}

@@ -33,9 +33,11 @@ import logging
 from typing import Dict, List, Optional, Any
 import asyncio
 
+from src.utils.utils import load_config
+
 
 class ConversationHistoryEngine:
-    def __init__(self, config: Dict[str, Any], redis_key: str = "conversations_history"):
+    def __init__(self, redis_key: str = "conversations_history"):
         """
         Initialize the ConversationHistoryEngine with Redis connection settings.
         
@@ -43,15 +45,15 @@ class ConversationHistoryEngine:
             config (Dict[str, Any]): Redis configuration dictionary
             redis_key (str): Key for storing conversations
         """
-        self.config = config
+        self.config = load_config()
         self.redis_key = redis_key
         self.config_key = "config"
-        self.redis_url = config.get('redis_host', 'localhost')
-        self.redis_port = config.get('redis_port', 6379)
-        self.optimized_db = config.get('redis_live_conversation_history_db', 0)
-        self.backup_db = config.get('redis_complete_backup_conversation_history_db', 1)
-        self.config_db = config.get('redis_live_conversation_history_db', 2)
-        self.redis_password = config.get('redis_password', None)
+        self.redis_url = self.config.get('redis_host', 'localhost')
+        self.redis_port = self.config.get('redis_port', 6379)
+        self.optimized_db = self.config.get('redis_live_conversation_history_db', 0)
+        self.backup_db = self.config.get('redis_complete_backup_conversation_history_db', 1)
+        self.config_db = self.config.get('redis_live_conversation_history_db', 2)
+        self.redis_password = self.config.get('redis_password', None)
         self.client: Optional[redis.Redis] = None
         self.backup_client: Optional[redis.Redis] = None
         self.config_client: Optional[redis.Redis] = None
@@ -280,6 +282,8 @@ class ConversationHistoryEngine:
             raise
     
 
+            
+    
 # Run test scenarios for the ConversationHistoryEngine.
 async def tests():
     
