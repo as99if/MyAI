@@ -22,7 +22,8 @@ python3 -m venv .venv
 brew install ffmpeg or apt-get install ffmpeg
 pip install --upgrade pip
 pip install -r requrements.txt
-make servers-run  # for ollama server and redis
+make servers-run  # for ollama redis dbs
+python -m src.inference_engine.inference_server
 python -m main
 ```
 
@@ -60,6 +61,7 @@ https://github.com/googlemaps/google-maps-services-python
 3.3. create response and information material (markdown, summary etc.) - ms markitdown *
 3.4. searches iterate in background
 3.5. object detection and distance mesurement with yolo-v9 and response as markdown.
+3.6. expense and income record with voice command and ocr receipt management
 - on finish save in conversation history, and notify tool caller
 - process status shared with tool caller
 ---

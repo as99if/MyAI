@@ -48,9 +48,9 @@ class InferenceServer:
         """Start the FastAPI server"""
         llm_base_path = self.config.get("llm_base_path")
         llm = self.config.get("llm")
-        subprocess.run(["python", "-m", "llama_cpp.server", "--model", f"{llm_base_path}/{llm}", "--port", "50001"])
-        # subprocess.run(["python", "-m", "llama_cpp.server", "--config_file", f"src/inference_engine/inference_server_config.json", "--port", "50001"])
-        
+        # subprocess.run(["python", "-m", "llama_cpp.server", "--model", f"{llm_base_path}/{llm}", "--port", "50001"])
+        subprocess.run(["python", "-m", "llama_cpp.server", "--config_file", f"inference_server_config.json", "--port", "50001"])
+    
         self.server_run = multiprocessing.Process(target=self._initialize_llm_server, name="computer-inference-server")
         self.server_run.start()
         self.server_run.join()
@@ -61,5 +61,5 @@ class InferenceServer:
             self.inference_server = None
             self.server_run = None
 
-# i = InferenceServer()
-# i.start_server()
+i = InferenceServer()
+i.start_server()

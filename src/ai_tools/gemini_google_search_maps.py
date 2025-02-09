@@ -13,8 +13,6 @@ import os
 import webbrowser
 from bs4 import BeautifulSoup
 import requests
-from serpapi import GoogleSearch
-import googlemaps
 import google.generativeai as genai
 
 from src.ai_tools.groq import groq_inference

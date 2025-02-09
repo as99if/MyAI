@@ -2,6 +2,8 @@
 # stt bad
 # tts noisy
 
+import asyncio
+import json
 import os
 from datetime import datetime
 import pyaudio
@@ -26,23 +28,23 @@ from src.utils.utils import load_config
 
 
 class MyAIAssistant:
-    def __init__(self, inference_processor, conversation_history_engine, asr_engine, tts_engine, vision_history_engine: None):
+    def __init__(self, inference_processor, speech_engine, vision_history_engine = None, conversation_history_engine = None):
         self.computer = None
         self.config = load_config()
         self.inference_processor = inference_processor
         self.conversation_history_engine = conversation_history_engine
         self.voice_reply_enabled = self.config.get(
             'voice_reply_enabled', False)
-
-        self.tts_engine = tts_engine
-        self.asr_engine = asr_engine
+        
+        self.tts_engine = speech_engine.tts_engine
+        self.asr_engine = speech_engine.asr_engine
 
         # PyAudio configuration for audio detection
-        self.CHUNK = 1024 * 4
+        self.CHUNK = 2048 # 1024, 4096
         self.FORMAT = pyaudio.paInt16
-        self.CHANNELS = 1
-        self.RATE = 16000  # 44100
-        self.WAVE_OUTPUT_FILENAME = "temp_audio.wav"
+        self.CHANNELS = 1 # mono
+        self.RATE = 44100
+        self.WAVE_OUTPUT_FILENAME = "src/speech_engine/temp_audio.flac"
         self.pyaudio = pyaudio.PyAudio()
 
         # Audio detection parameters
@@ -68,8 +70,7 @@ class MyAIAssistant:
         # Set up signal handler for graceful exit
         signal.signal(signal.SIGINT, self.exit_gracefully)
         signal.signal(signal.SIGTERM, self.exit_gracefully)
-
-        self.run()
+                    
 
     def split_text_into_chunks(self, text, chunk_size=100):
         """Split text into chunks for progressive TTS"""
@@ -100,49 +101,57 @@ class MyAIAssistant:
         def audio_callback(in_data, frame_count, time_info, status):
             audio_queue.put(in_data)
             return (None, pyaudio.paContinue)
-
-        stream = self.pyaudio.open(
-            format=self.FORMAT,
-            channels=self.CHANNELS,
-            rate=self.RATE,
-            input=True,
-            frames_per_buffer=self.CHUNK,
-            stream_callback=audio_callback
-        )
-
-        print("Listening... (Hold space to record)")
-        while keyboard.is_pressed('space'):
-            if not audio_queue.empty():
-                data = audio_queue.get()
-                frames.append(data)
-
-        print("Processing audio...")
-        stream.stop_stream()
-        stream.close()
-
-        # Save the recorded audio to a temporary WAV file
-        with wave.open(self.WAVE_OUTPUT_FILENAME, 'wb') as wf:
-            wf.setnchannels(self.CHANNELS)
-            wf.setsampwidth(self.pyaudio.get_sample_size(self.FORMAT))
-            wf.setframerate(self.RATE)
-            wf.writeframes(b''.join(frames))
-
+        stream = None
         try:
-            # Use Whisper CPP for transcription
-            result = self.asr_engine.engine.transcribe(
-                self.WAVE_OUTPUT_FILENAME, new_segment_callback=print)
+            while keyboard.is_pressed('space'):
+                if stream is None:
+                    stream = self.pyaudio.open(
+                        format=self.FORMAT,
+                        channels=self.CHANNELS,
+                        rate=self.RATE,
+                        input=True,
+                        frames_per_buffer=self.CHUNK,
+                        stream_callback=audio_callback
+                    )
+                if not audio_queue.empty():
+                    data = audio_queue.get()
+                    frames.append(data)
+        finally:
+            if stream:
+                stream.stop_stream()
+                stream.close()
 
-            # Clean up temporary file
-            if os.path.exists(self.WAVE_OUTPUT_FILENAME):
-                os.remove(self.WAVE_OUTPUT_FILENAME)
+        # num_silent_frames = int(self.RATE * 1 / self.CHUNK)
+        # silent_frame = b'\x00' * self.CHUNK * self.pyaudio.get_sample_size(self.FORMAT)
+        if len(frames) > 0 :
+            # Append silent frames
+            # for _ in range(num_silent_frames):
+            #    frames.append(silent_frame)
 
-            return result.text if result else None
+            # Save the recorded audio to a temporary WAV file
+            with wave.open(self.WAVE_OUTPUT_FILENAME, 'wb') as wf:
+                print("Processing audio...")
+                wf.setnchannels(self.CHANNELS)
+                wf.setsampwidth(self.pyaudio.get_sample_size(self.FORMAT))
+                wf.setframerate(self.RATE)
+                wf.writeframes(b''.join(frames))
 
-        except Exception as e:
-            print(f"Transcription error: {e}")
-            if os.path.exists(self.WAVE_OUTPUT_FILENAME):
-                os.remove(self.WAVE_OUTPUT_FILENAME)
-            return None
+            try:
+                # Use Whisper CPP for transcription
+                
+                result = self.asr_engine.engine.transcribe(self.WAVE_OUTPUT_FILENAME)
+
+                # Clean up temporary file
+                if os.path.exists(self.WAVE_OUTPUT_FILENAME):
+                    os.remove(self.WAVE_OUTPUT_FILENAME)
+
+                return result[0].text if result else None
+
+            except Exception as e:
+                print(f"Transcription error: {e}")
+                if os.path.exists(self.WAVE_OUTPUT_FILENAME):
+                    os.remove(self.WAVE_OUTPUT_FILENAME)
+                return None
 
     def voice_reply(self, text):
         """Speak text using Silero TTS with interruption handling"""
@@ -199,15 +208,6 @@ class MyAIAssistant:
         except Exception as e:
             print(f"Error in text-to-speech: {e}")
 
-    def monitor_camera_loop(self):
-        """Monitor the camera loop for interruptions"""
-        while True:
-            if keyboard.is_pressed('.'):
-                self.interruption = True
-            else:
-                self.interruption = False
-            time.sleep(0.1)
-
     def monitor_audio_interruption(self):
         """Continuously check if space key is pressed"""
         while True:
@@ -229,7 +229,7 @@ class MyAIAssistant:
                     del obj
 
             # Clear conversation history
-            if hasattr(self, 'conversation_history_service'):
+            if hasattr(self, 'conversation_history_engine'):
                 self.conversation_history_engine.clear()
 
             # Release TTS and ASR engines
@@ -272,7 +272,7 @@ class MyAIAssistant:
     async def __run__(self):
         # memory procesor and conversation summarizer and all those things will run on call of this function
         # maybe for creating conversation summary every  weeks, we can use a timer to call the function that creates the summary to make context smaller
-
+        print("Listening... (Hold space to record)")
         while True:
             message = self.listen()
             if message is None:
@@ -282,7 +282,7 @@ class MyAIAssistant:
 
             # LLM chat completion
             # Prepare context messages
-            user_message =[{"role": "human", "content": message, type: "user_message", "timestamp": datetime.now().isoformat()}]
+            user_message =[{"role": "user", "content": message, type: "user_message", "timestamp": datetime.now().isoformat()}]
             # if vlm
             # {
             #     "role": "user",
@@ -300,18 +300,20 @@ class MyAIAssistant:
             if self.conversation_history_engine:
                 try: 
                     recent_conversation = await self.conversation_history_engine.get_recent_conversation()
-                    recent_conversation.extend(user_message)
+                    recent_conversation = recent_conversation + user_message
                     self.conversation_history_engine.add_conversation(user_message)
                 except Exception as e:
                     print(f"Error getting recent conversation: {e}")
                     raise e
             else:
-                recent_conversation.extend(user_message)
+                recent_conversation = recent_conversation + user_message
 
             response = await self.inference_processor.create_chat_completion(recent_conversation)
-            
-            response = response['choices'][0]['message']['content']
-            
+            # print("@@@@@@@@@@@")
+            # print(json.dumps(response.dict()))
+            # response = response.content
+            # print("@@@")
+            # print(response)
             # voice reply
             if self.voice_reply_enabled:
                 # Speak the Computer's reply with interruption handling
@@ -344,7 +346,22 @@ class MyAIAssistant:
                 self.exit_gracefully()
                 break
 
+    
+        
     def run(self):
-        self.computer = threading.Thread(target=self.__run__, name="computer")
+        """self.computer = threading.Thread(target=self.__run__, name="computer")
         self.computer.start()
-        self.computer.join()
+        self.computer.join()"""
+        
+        """Run the assistant in an async event loop"""
+        try:
+            # Create new event loop for the thread
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            # Run the coroutine
+            loop.run_until_complete(self.__run__())
+        except Exception as e:
+            print(f"Error in run: {e}")
+        finally:
+            loop.close()
