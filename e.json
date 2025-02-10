@@ -1,0 +1,530 @@
+{
+    "kind": "customsearch#search",
+    "url": {
+        "type": "application/json",
+        "template": "https://www.googleapis.com/customsearch/v1?q={searchTerms}&num={count?}&start={startIndex?}&lr={language?}&safe={safe?}&cx={cx?}&sort={sort?}&filter={filter?}&gl={gl?}&cr={cr?}&googlehost={googleHost?}&c2coff={disableCnTwTranslation?}&hq={hq?}&hl={hl?}&siteSearch={siteSearch?}&siteSearchFilter={siteSearchFilter?}&exactTerms={exactTerms?}&excludeTerms={excludeTerms?}&linkSite={linkSite?}&orTerms={orTerms?}&dateRestrict={dateRestrict?}&lowRange={lowRange?}&highRange={highRange?}&searchType={searchType}&fileType={fileType?}&rights={rights?}&imgSize={imgSize?}&imgType={imgType?}&imgColorType={imgColorType?}&imgDominantColor={imgDominantColor?}&alt=json"
+    },
+    "queries": {
+        "request": [
+            {
+                "title": "Google Custom Search - What are the current states of quantum computing research in the world?",
+                "totalResults": "102000000",
+                "searchTerms": "What are the current states of quantum computing research in the world?",
+                "count": 10,
+                "startIndex": 1,
+                "inputEncoding": "utf8",
+                "outputEncoding": "utf8",
+                "safe": "off",
+                "cx": "24c143fb02fd94d45"
+            }
+        ],
+        "nextPage": [
+            {
+                "title": "Google Custom Search - What are the current states of quantum computing research in the world?",
+                "totalResults": "102000000",
+                "searchTerms": "What are the current states of quantum computing research in the world?",
+                "count": 10,
+                "startIndex": 11,
+                "inputEncoding": "utf8",
+                "outputEncoding": "utf8",
+                "safe": "off",
+                "cx": "24c143fb02fd94d45"
+            }
+        ]
+    },
+    "context": {
+        "title": "asif-custom-search-engine"
+    },
+    "searchInformation": {
+        "searchTime": 0.423945,
+        "formattedSearchTime": "0.42",
+        "totalResults": "102000000",
+        "formattedTotalResults": "102,000,000"
+    },
+    "items": [
+        {
+            "kind": "customsearch#result",
+            "title": "Quantum computing: What leaders need to know now | MIT Sloan",
+            "htmlTitle": "<b>Quantum computing</b>: What leaders need to know now | MIT Sloan",
+            "link": "https://mitsloan.mit.edu/ideas-made-to-matter/quantum-computing-what-leaders-need-to-know-now",
+            "displayLink": "mitsloan.mit.edu",
+            "snippet": "Jan 11, 2024 ... A framework from MIT researchers can help businesses anticipate when quantum computing might be useful — and when it might not ...",
+            "htmlSnippet": "Jan 11, 2024 <b>...</b> A framework from MIT <b>researchers</b> can help businesses anticipate when <b>quantum computing</b> might be useful — and when it might not&nbsp;...",
+            "formattedUrl": "https://mitsloan.mit.edu/.../quantum-computing-what-leaders-need-to-know...",
+            "htmlFormattedUrl": "https://mitsloan.mit.edu/.../<b>quantum</b>-<b>computing</b>-what-leaders-need-to-know...",
+            "pagemap": {
+                "cse_thumbnail": [
+                    {
+                        "src": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS20iAg2ft0O51qWPYzlModxqi2WyOQ-LuVAeTqrecWNz0uXLORUrtIueYk&s",
+                        "width": "311",
+                        "height": "162"
+                    }
+                ],
+                "imageobject": [
+                    {
+                        "width": "152",
+                        "url": "/themes/custom/mitsloan/img/MITSloanLogo.png",
+                        "height": "87"
+                    },
+                    {
+                        "width": "1400",
+                        "url": "/sites/default/files/styles/article_header/public/2024-01/ibm-quantum-computer_0.jpg?h=1522696c&itok=NbrybytY",
+                        "height": "480"
+                    }
+                ],
+                "organization": [
+                    {
+                        "name": "MIT Sloan School of Management"
+                    },
+                    {
+                        "url": "https://mitsloan.mit.edu/",
+                        "sameas": "https://www.facebook.com/MITSloan"
+                    }
+                ],
+                "metatags": [
+                    {
+                        "og:image": "https://mitsloan.mit.edu/sites/default/files/styles/og_image/public/2024-01/ibm-quantum-computer_0.jpg?h=1522696c&itok=qxsqaEHW",
+                        "twitter:card": "summary_large_image",
+                        "twitter:title": "Quantum computing: What leaders need to know now | MIT Sloan",
+                        "theme-color": "#ffffff",
+                        "og:site_name": "MIT Sloan",
+                        "handheldfriendly": "true",
+                        "msvalidate.01": "64FACE15B8B2407A6A501FD9EAC092AD",
+                        "og:title": "Quantum computing: What leaders need to know now | MIT Sloan",
+                        "twitter:image": "https://mitsloan.mit.edu/sites/default/files/styles/og_image/public/2024-01/ibm-quantum-computer_0.jpg?h=1522696c&itok=qxsqaEHW",
+                        "facebook-domain-verification": "o19u7bs0bn1cuxcoaxxw8b3gps1ffa",
+                        "twitter:site": "MITSloan",
+                        "viewport": "width=device-width, initial-scale=1.0",
+                        "twitter:description": "A framework from MIT researchers can help businesses anticipate when quantum computing might be useful — and when it might not.",
+                        "mobileoptimized": "width",
+                        "og:url": "https://mitsloan.mit.edu/ideas-made-to-matter/quantum-computing-what-leaders-need-to-know-now"
+                    }
+                ],
+                "cse_image": [
+                    {
+                        "src": "https://mitsloan.mit.edu/sites/default/files/styles/og_image/public/2024-01/ibm-quantum-computer_0.jpg?h=1522696c&itok=qxsqaEHW"
+                    }
+                ],
+                "article": [
+                    {
+                        "author": "Beth Stackpole",
+                        "name": "Quantum computing: What leaders need to know now",
+                        "headline": "A framework from MIT researchers can help businesses anticipate when quantum computing might be useful — and when it might not.",
+                        "datepublished": "2024-01-11"
+                    }
+                ]
+            }
+        },
+        {
+            "kind": "customsearch#result",
+            "title": "Quantum Computing: Concepts, Current State, and Considerations ...",
+            "htmlTitle": "<b>Quantum Computing</b>: Concepts, <b>Current State</b>, and Considerations ...",
+            "link": "https://crsreports.congress.gov/product/pdf/R/R47685",
+            "displayLink": "crsreports.congress.gov",
+            "snippet": "Sep 7, 2023 ... 39 For more background information of the NQI Act, see CRS Report R45409, Quantum Information Science: Applications, Global Research and ...",
+            "htmlSnippet": "Sep 7, 2023 <b>...</b> 39 For more background information of the NQI Act, see CRS Report R45409, <b>Quantum</b> Information Science: Applications, <b>Global Research</b> and&nbsp;...",
+            "formattedUrl": "https://crsreports.congress.gov/product/pdf/R/R47685",
+            "htmlFormattedUrl": "https://crsreports.congress.gov/product/pdf/R/R47685",
+            "pagemap": {
+                "metatags": [
+                    {
+                        "moddate": "D:20230911155928-04'00'",
+                        "creationdate": "D:20230911155924-04'00'",
+                        "creator": "Microsoft® Word LTSC",
+                        "author": "Ling Zhu",
+                        "subject": "CRS Report",
+                        "producer": "Microsoft® Word LTSC; modified using iText® 7.1.2 ©2000-2018 iText Group NV (AGPL-version)",
+                        "title": "Quantum Computing: Concepts, Current State, and Considerations for Congress"
+                    }
+                ]
+            },
+            "mime": "application/pdf",
+            "fileFormat": "PDF/Adobe Acrobat"
+        },
+        {
+            "kind": "customsearch#result",
+            "title": "The Way I See It: The state of quantum computing | Rice News ...",
+            "htmlTitle": "The Way I See It: The <b>state of quantum computing</b> | Rice News ...",
+            "link": "https://news.rice.edu/news/2021/way-i-see-it-state-quantum-computing",
+            "displayLink": "news.rice.edu",
+            "snippet": "Aug 16, 2021 ... Companies like IBM, Google, Microsoft and Honeywell are all building quantum computers, and researchers from universities around the world have ...",
+            "htmlSnippet": "Aug 16, 2021 <b>...</b> Companies like IBM, Google, Microsoft and Honeywell are all building <b>quantum computers</b>, and <b>researchers</b> from universities around the <b>world</b> have&nbsp;...",
+            "formattedUrl": "https://news.rice.edu/news/2021/way-i-see-it-state-quantum-computing",
+            "htmlFormattedUrl": "https://news.rice.edu/news/2021/way-i-see-it-state-<b>quantum</b>-<b>computing</b>",
+            "pagemap": {
+                "cse_thumbnail": [
+                    {
+                        "src": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTgjQu7KDJhtmUqGmO2kOfcMmj4LYrDUHraztbY8eQ_GwA_ZPmEIYyhOn4&s",
+                        "width": "273",
+                        "height": "185"
+                    }
+                ],
+                "metatags": [
+                    {
+                        "og:image": "https://news.rice.edu/sites/g/files/bxs2656/files/2021-08/0816_QUANTCOMP-b3-blue-310x208.jpeg",
+                        "twitter:card": "summary",
+                        "twitter:title": "The Way I See It: The state of quantum computing",
+                        "og:site_name": "Rice News | News and Media Relations | Rice University",
+                        "og:image:url": "https://news.rice.edu/sites/g/files/bxs2656/files/2021-08/0816_QUANTCOMP-b3-blue-310x208.jpeg",
+                        "handheldfriendly": "true",
+                        "twitter:url": "https://news.rice.edu/news/2021/way-i-see-it-state-quantum-computing",
+                        "og:title": "The Way I See It: The state of quantum computing",
+                        "og:description": "Ken Kennedy Institute Executive Director Angela Wilkins discusses the development and future of quantum computing.",
+                        "twitter:image": "https://news.rice.edu/sites/g/files/bxs2656/files/2021-08/0816_QUANTCOMP-b3-blue-310x208.jpeg",
+                        "viewport": "width=device-width, initial-scale=1.0",
+                        "twitter:description": "Ken Kennedy Institute Executive Director Angela Wilkins discusses the development and future of quantum computing.",
+                        "mobileoptimized": "width",
+                        "og:url": "https://news.rice.edu/news/2021/way-i-see-it-state-quantum-computing"
+                    }
+                ],
+                "cse_image": [
+                    {
+                        "src": "https://news.rice.edu/sites/g/files/bxs2656/files/2021-08/0816_QUANTCOMP-b3-blue-310x208.jpeg"
+                    }
+                ]
+            }
+        },
+        {
+            "kind": "customsearch#result",
+            "title": "What Is Quantum Computing? | IBM",
+            "htmlTitle": "What Is <b>Quantum Computing</b>? | IBM",
+            "link": "https://www.ibm.com/think/topics/quantum-computing",
+            "displayLink": "www.ibm.com",
+            "snippet": "Aug 5, 2024 ... Quantum computing is an emergent field of cutting-edge computer science harnessing the unique qualities of quantum mechanics to solve problems",
+            "htmlSnippet": "Aug 5, 2024 <b>...</b> <b>Quantum computing</b> is an emergent field of cutting-edge computer science harnessing the unique qualities of quantum mechanics to solve problems",
+            "formattedUrl": "https://www.ibm.com/think/topics/quantum-computing",
+            "htmlFormattedUrl": "https://www.ibm.com/think/topics/<b>quantum</b>-<b>computing</b>",
+            "pagemap": {
+                "cse_thumbnail": [
+                    {
+                        "src": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQJQKL9hryHkixE_eg39QfE80kY8S97aaIlwWhEUp4pY3g79dms62NZEJ4&s",
+                        "width": "318",
+                        "height": "159"
+                    }
+                ],
+                "metatags": [
+                    {
+                        "template": "article",
+                        "og:image": "https://assets.ibm.com/is/image/ibm/ibm-8bar-logo-2560x2560?$original$",
+                        "ibm.com.search.appid": "thinkhub",
+                        "ibm.search.facet.field_hierarchy_01": "taxonomy : Topics / Quantum computing",
+                        "og:type": "website",
+                        "ibm.search.facet.field_keyword_09": "https://prod-cloud-publish.aem.ibm.net/content/dam/connectedassets-adobe-cms/worldwide-content/stock-assets/getty/image/photography/90/03/000019957987_XXXLarge.component.crop-thumbnail-16-by-9-retina.ts=0.jpg/content/adobe-cms/us/en/think/topics/quantum-computing/jcr:content/root/leadspace_container/leadspace_article",
+                        "ibm.search.facet.field_hierarchy_03": "taxonomy : Content Format / Article",
+                        "countrycode": "us",
+                        "ibm.search.facet.field_hierarchy_04": "taxonomy : Content Type / Explainer",
+                        "og:title": "What Is Quantum Computing? | IBM",
+                        "ibm.search.facet.field_text_01": "05 August 2024",
+                        "dcterms.date": "2024-08-05T00:00:00.000",
+                        "og:description": "Quantum computing is a rapidly-emerging technology that harnesses the laws of quantum mechanics to solve problems too complex for classical computers.",
+                        "searchtitle": "What Is Quantum Computing?",
+                        "ibm.search.facet.field_text_03": "Explainer",
+                        "languagecode": "en",
+                        "ibm.com.search.scopes": "thinkhub",
+                        "viewport": "width=device-width, initial-scale=1",
+                        "og:locale": "en-US",
+                        "ibm.search.facet.field_keyword_01": "Quantum computing",
+                        "og:url": "https://www.ibm.com/think/topics/quantum-computing",
+                        "focusarea": "Systems - All"
+                    }
+                ],
+                "cse_image": [
+                    {
+                        "src": "https://www.ibm.com/content/dam/connectedassets-adobe-cms/worldwide-content/stock-assets/getty/image/photography/90/03/000019957987_XXXLarge.component.crop-2by1-xl.ts=1737744095418.jpg/content/adobe-cms/us/en/think/topics/quantum-computing/jcr:content/root/leadspace_container/leadspace_article"
+                    }
+                ]
+            }
+        },
+        {
+            "kind": "customsearch#result",
+            "title": "Current state on quantum computing. What are the major companies ...",
+            "htmlTitle": "<b>Current state</b> on <b>quantum computing</b>. What are the major companies ...",
+            "link": "https://www.reddit.com/r/QuantumComputing/comments/1chaa7e/current_state_on_quantum_computing_what_are_the/",
+            "displayLink": "www.reddit.com",
+            "snippet": "May 1, 2024 ... Apple - no idea, but I know a bunch of their AI management have left to join stealth quantum startups. As ever, the advantage startups have is ...",
+            "htmlSnippet": "May 1, 2024 <b>...</b> Apple - no idea, but I know a bunch of their AI management have left to join stealth <b>quantum</b> startups. As <b>ever</b>, the advantage startups have is&nbsp;...",
+            "formattedUrl": "https://www.reddit.com/.../QuantumComputing/.../current_state_on_quantu...",
+            "htmlFormattedUrl": "https://www.reddit.com/.../<b>QuantumComputing</b>/.../<b>current</b>_state_on_<b>quantu</b>...",
+            "pagemap": {
+                "metatags": [
+                    {
+                        "og:image": "https://share.redd.it/preview/post/1chaa7e",
+                        "theme-color": "#000000",
+                        "og:image:width": "1200",
+                        "og:type": "website",
+                        "og:image:alt": "An image containing a preview of the post",
+                        "twitter:card": "summary_large_image",
+                        "twitter:title": "r/QuantumComputing on Reddit: Current state on quantum computing. What are the major companies/startups making progress?",
+                        "og:site_name": "Reddit",
+                        "og:title": "r/QuantumComputing on Reddit: Current state on quantum computing. What are the major companies/startups making progress?",
+                        "og:image:height": "630",
+                        "msapplication-navbutton-color": "#000000",
+                        "og:description": "Posted by u/WisdomPioneer - 23 votes and 20 comments",
+                        "twitter:image": "https://share.redd.it/preview/post/1chaa7e",
+                        "apple-mobile-web-app-status-bar-style": "black",
+                        "twitter:site": "@reddit",
+                        "viewport": "width=device-width, initial-scale=1, viewport-fit=cover",
+                        "apple-mobile-web-app-capable": "yes",
+                        "og:ttl": "600",
+                        "og:url": "https://www.reddit.com/r/QuantumComputing/comments/1chaa7e/current_state_on_quantum_computing_what_are_the/"
+                    }
+                ],
+                "cse_image": [
+                    {
+                        "src": "https://share.redd.it/preview/post/1chaa7e"
+                    }
+                ]
+            }
+        },
+        {
+            "kind": "customsearch#result",
+            "title": "NIST Releases First 3 Finalized Post-Quantum Encryption Standards",
+            "htmlTitle": "NIST Releases First 3 Finalized Post-<b>Quantum</b> Encryption Standards",
+            "link": "https://www.nist.gov/news-events/news/2024/08/nist-releases-first-3-finalized-post-quantum-encryption-standards",
+            "displayLink": "www.nist.gov",
+            "snippet": "Aug 13, 2024 ... Researchers around the world are racing to build quantum computers ... quantum computing plays an essential role in reaffirming America's status ...",
+            "htmlSnippet": "Aug 13, 2024 <b>...</b> <b>Researchers</b> around the <b>world</b> are racing to build <b>quantum computers</b> ... <b>quantum computing</b> plays an essential role in reaffirming America&#39;s <b>status</b>&nbsp;...",
+            "formattedUrl": "https://www.nist.gov/.../nist-releases-first-3-finalized-post-quantum-encrypti...",
+            "htmlFormattedUrl": "https://www.nist.gov/.../nist-releases-first-3-finalized-post-<b>quantum</b>-encrypti...",
+            "pagemap": {
+                "cse_thumbnail": [
+                    {
+                        "src": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTmCQ0PzJMqNLXkZOJ9-3JL_RCDX_zpHTi802FWo5X3WoiSUCAiYQChMzLz&s",
+                        "width": "300",
+                        "height": "168"
+                    }
+                ],
+                "Article": [
+                    {
+                        "name": "NIST Releases First 3 Finalized Post-Quantum Encryption Standards "
+                    }
+                ],
+                "metatags": [
+                    {
+                        "nist_search_modified": "2025-02-04T12:30:00-05:00",
+                        "og:image": "https://www.nist.gov/sites/default/files/styles/social/public/images/2023/08/22/PQC_Algo_Pre-standardization-vid.jpg?itok=QoP6Ie_b",
+                        "citation_title": "NIST Releases First 3 Finalized Post-Quantum Encryption Standards | NIST",
+                        "og:image:width": "2400",
+                        "article:published_time": "2024-08-13T08:00-04:00",
+                        "twitter:card": "summary_large_image",
+                        "og:site_name": "NIST",
+                        "dcterms.title": "NIST Releases First 3 Finalized Post-Quantum Encryption Standards",
+                        "og:description": "NIST is encouraging computer system administrators to begin transitioning to the new standards as soon as possible",
+                        "twitter:site": "NIST",
+                        "article:modified_time": "2025-02-04T12:30-05:00",
+                        "dcterms.source": "NIST",
+                        "dcterms.modified": "2025-02-04T12:30-05:00",
+                        "og:type": "Article",
+                        "og:image:alt": "Collage illustration of servers, laptops and phones is divided into left \"Old Encryption Standards\" and right \"New Encryption Standards.\"",
+                        "twitter:title": "NIST Releases First 3 Finalized Post-Quantum Encryption Standards",
+                        "handheldfriendly": "true",
+                        "dcterms.type": "text",
+                        "og:title": "NIST Releases First 3 Finalized Post-Quantum Encryption Standards",
+                        "og:image:height": "1350",
+                        "dcterms.description": "NIST is encouraging computer system administrators to begin transitioning to the new standards as soon as possible",
+                        "dcterms.date": "2024-08-13T08:00-04:00",
+                        "dcterms.created": "2024-08-13T08:00-04:00",
+                        "viewport": "width=device-width, initial-scale=1.0",
+                        "twitter:description": "NIST is encouraging computer system administrators to begin transitioning to the new standards as soon as possible",
+                        "mobileoptimized": "width",
+                        "dcterms.format": "text/html",
+                        "og:url": "https://www.nist.gov/news-events/news/2024/08/nist-releases-first-3-finalized-post-quantum-encryption-standards",
+                        "nist_search_bundle": "article",
+                        "dcterms.identifier": "https://www.nist.gov/news-events/news/2024/08/nist-releases-first-3-finalized-post-quantum-encryption-standards"
+                    }
+                ],
+                "cse_image": [
+                    {
+                        "src": "https://www.nist.gov/sites/default/files/styles/social/public/images/2023/08/22/PQC_Algo_Pre-standardization-vid.jpg?itok=QoP6Ie_b"
+                    }
+                ]
+            }
+        },
+        {
+            "kind": "customsearch#result",
+            "title": "State of Quantum Computing: Building a Quantum Economy | World ...",
+            "htmlTitle": "<b>State of Quantum Computing</b>: Building a Quantum Economy | <b>World</b> ...",
+            "link": "https://www.weforum.org/publications/state-of-quantum-computing-building-a-quantum-economy/",
+            "displayLink": "www.weforum.org",
+            "snippet": "Sep 13, 2022 ... This report by the Global Future Council on Quantum Computing aims to provide clear, concise and neutral assessment of the current state of ...",
+            "htmlSnippet": "Sep 13, 2022 <b>...</b> This report by the <b>Global</b> Future Council on <b>Quantum Computing</b> aims to provide clear, concise and neutral assessment of the <b>current state</b> of&nbsp;...",
+            "formattedUrl": "https://www.weforum.org/.../state-of-quantum-computing-building-a-quant...",
+            "htmlFormattedUrl": "https://www.weforum.org/.../state-of-<b>quantum</b>-<b>computing</b>-building-a-<b>quant</b>...",
+            "pagemap": {
+                "cse_thumbnail": [
+                    {
+                        "src": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTXuGmQKSywACQ00wmo-JiSLIbo7iIilMXZzu9LJhMrier0qcxDuTGXbK4&s",
+                        "width": "187",
+                        "height": "270"
+                    }
+                ],
+                "metatags": [
+                    {
+                        "msapplication-tilecolor": "#2b5797",
+                        "image": "https://www.weforum.org/weforum.png",
+                        "og:type": "website",
+                        "twitter:card": "summary",
+                        "twitter:title": "State of Quantum Computing: Building a Quantum Economy",
+                        "theme-color": "#035b9c",
+                        "og:site_name": "World Economic Forum",
+                        "twitter:url": "https://www.weforum.org/publications/state-of-quantum-computing-building-a-quantum-economy/",
+                        "og:title": "State of Quantum Computing: Building a Quantum Economy",
+                        "csrf-param": "authenticity_token",
+                        "og:description": "This report by the Global Future Council on Quantum Computing aims to provide clear, concise and neutral assessment of the current state of the quantum computing industry, advising business leaders and policy-makers on actions to be taken now to prepare for the technology once it matures.",
+                        "fb:pages": "7746841478",
+                        "twitter:image": "https://www.weforum.org/weforum.png",
+                        "pocket-site-verification": "0a5ad3db01a37673563584ab440eda",
+                        "fb:app_id": "1085482764806408",
+                        "viewport": "width=device-width, minimum-scale=1.0, initial-scale=1.0",
+                        "twitter:description": "This report by the Global Future Council on Quantum Computing aims to provide clear, concise and neutral assessment of the current state of the quantum computing industry, advising business leaders and policy-makers on actions to be taken now to prepare for the technology once it matures.",
+                        "csrf-token": "1GZSyZoYu9kMawidpYXluI1VozccX8Y7JT8O5lt3mcNq8/NjSWoiVq441mbZHe7Sz9XgHC6GAd2GlQPwVtKqSA==",
+                        "og:url": "https://www.weforum.org/publications/state-of-quantum-computing-building-a-quantum-economy/"
+                    }
+                ],
+                "cse_image": [
+                    {
+                        "src": "https://assets.weforum.org/report/cover_image/YiI3fZxizMRPvI21MkQLpROhEYoBZMQ1VRt6aTl4nR8.jpg"
+                    }
+                ]
+            }
+        },
+        {
+            "kind": "customsearch#result",
+            "title": "Quantum Computing: Current Progress and Future Directions ...",
+            "htmlTitle": "<b>Quantum Computing</b>: <b>Current</b> Progress and Future Directions ...",
+            "link": "https://er.educause.edu/articles/2022/7/quantum-computing-current-progress-and-future-directions",
+            "displayLink": "er.educause.edu",
+            "snippet": "Jul 11, 2022 ... Today's quantum computers provide the speed that researchers need to mimic all aspects of chemistry, allowing them to be significantly more predictive.",
+            "htmlSnippet": "Jul 11, 2022 <b>...</b> Today&#39;s <b>quantum computers</b> provide the speed that <b>researchers</b> need to mimic all aspects of chemistry, allowing them to be significantly more predictive.",
+            "formattedUrl": "https://er.educause.edu/.../quantum-computing-current-progress-and-future...",
+            "htmlFormattedUrl": "https://er.educause.edu/.../<b>quantum</b>-<b>computing</b>-<b>current</b>-progress-and-future...",
+            "pagemap": {
+                "cse_thumbnail": [
+                    {
+                        "src": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTy_cajMML5Ab08in6_3PyA85Nz_mIfTw-j5hz3HqefWd071FKodwzYSSD2&s",
+                        "width": "353",
+                        "height": "143"
+                    }
+                ],
+                "metatags": [
+                    {
+                        "og:image": "https://er.educause.edu/-/media/images/articles/2022/07/er22_3101_relatedimage_1600x650.jpg",
+                        "twitter:card": "summary_large_image",
+                        "twitter:title": "Quantum Computing: Current Progress and Future Directions",
+                        "og:type": "article",
+                        "og:site_name": "EDUCAUSE Review",
+                        "handheldfriendly": "True",
+                        "twitter:url": "https://er.educause.edu/articles/2022/7/quantum-computing-current-progress-and-future-directions",
+                        "og:title": "Quantum Computing: Current Progress and Future Directions",
+                        "title": "Quantum Computing: Current Progress and Future Directions",
+                        "og:description": "What is quantum computing, how is it being used, and what are the implications for higher education?",
+                        "twitter:image": "https://er.educause.edu/-/media/images/articles/2022/07/er22_3101_relatedimage_1600x650.jpg",
+                        "twitter:site": "EDUCAUSE Review",
+                        "viewport": "width=device-width, minimum-scale=1, initial-scale=1",
+                        "twitter:description": "What is quantum computing, how is it being used, and what are the implications for higher education?",
+                        "mobileoptimized": "320",
+                        "og:url": "https://er.educause.edu/articles/2022/7/quantum-computing-current-progress-and-future-directions"
+                    }
+                ],
+                "cse_image": [
+                    {
+                        "src": "https://er.educause.edu/-/media/images/articles/2022/07/er22_3101_relatedimage_1600x650.jpg"
+                    }
+                ]
+            }
+        },
+        {
+            "kind": "customsearch#result",
+            "title": "18 Leading Quantum Computing Research Institutions in 2024",
+            "htmlTitle": "18 Leading <b>Quantum Computing Research</b> Institutions in 2024",
+            "link": "https://thequantuminsider.com/2022/05/16/quantum-research/",
+            "displayLink": "thequantuminsider.com",
+            "snippet": "May 16, 2022 ... We've organized a list of 18 of today's most respected – leading – quantum computing research labs in the world.",
+            "htmlSnippet": "May 16, 2022 <b>...</b> We&#39;ve organized a list of 18 of today&#39;s most respected – leading – <b>quantum computing research</b> labs in the <b>world</b>.",
+            "formattedUrl": "https://thequantuminsider.com/2022/05/16/quantum-research/",
+            "htmlFormattedUrl": "https://the<b>quantum</b>insider.com/2022/05/16/<b>quantum</b>-<b>research</b>/",
+            "pagemap": {
+                "cse_thumbnail": [
+                    {
+                        "src": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRQj3I0jHWZes2c5zIsXkVyjltq3IoOFQJyXUDnp0D2hiVipjqKhAvGuE0&s",
+                        "width": "300",
+                        "height": "168"
+                    }
+                ],
+                "metatags": [
+                    {
+                        "og:image": "https://thequantuminsider.com/wp-content/uploads/quantum-computer.jpeg",
+                        "og:type": "article",
+                        "article:published_time": "2022-05-16T16:36:02+00:00",
+                        "og:image:width": "1200",
+                        "twitter:card": "summary_large_image",
+                        "og:site_name": "The Quantum Insider",
+                        "author": "Matt Swayne",
+                        "og:title": "18 Leading Quantum Computing Research Institutions in 2024",
+                        "og:image:height": "675",
+                        "twitter:label1": "Written by",
+                        "twitter:label2": "Est. reading time",
+                        "og:image:type": "image/jpeg",
+                        "msapplication-tileimage": "https://thequantuminsider.com/wp-content/uploads/2024/11/Quantum-Insider-Blue.png",
+                        "og:description": "We’ve organized a list of 18 of today’s most respected - leading - quantum computing research institutions in the world. Read on & enjoy!",
+                        "twitter:creator": "@SwaynesWord",
+                        "article:publisher": "https://www.facebook.com/The-Quantum-Insider-105937977453873/",
+                        "twitter:data1": "Matt Swayne",
+                        "twitter:data2": "14 minutes",
+                        "twitter:site": "@QuantumDaily",
+                        "article:modified_time": "2024-08-25T19:45:07+00:00",
+                        "viewport": "width=device-width, initial-scale=1",
+                        "og:locale": "en_US",
+                        "og:url": "https://thequantuminsider.com/2022/05/16/quantum-research/"
+                    }
+                ],
+                "cse_image": [
+                    {
+                        "src": "https://thequantuminsider.com/wp-content/uploads/quantum-computer.jpeg"
+                    }
+                ]
+            }
+        },
+        {
+            "kind": "customsearch#result",
+            "title": "Blog - iMessage with PQ3: The new state of the art in quantum ...",
+            "htmlTitle": "Blog - iMessage with PQ3: The new <b>state</b> of the art in <b>quantum</b> ...",
+            "link": "https://security.apple.com/blog/imessage-pq3/",
+            "displayLink": "security.apple.com",
+            "snippet": "Feb 21, 2024 ... ... quantum computing technology. —Professor Douglas Stebila. In the ... current global state of the art for automatic key verification. And ...",
+            "htmlSnippet": "Feb 21, 2024 <b>...</b> ... <b>quantum computing</b> technology. —Professor Douglas Stebila. In the ... <b>current global state</b> of the art for automatic key verification. And&nbsp;...",
+            "formattedUrl": "https://security.apple.com/blog/imessage-pq3/",
+            "htmlFormattedUrl": "https://security.apple.com/blog/imessage-pq3/",
+            "pagemap": {
+                "cse_thumbnail": [
+                    {
+                        "src": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQWT868qwV6CZP3kkyful7N8qSWIUmncgEB-7qXyFAj9tRR8EL3srtZJZtC&s",
+                        "width": "310",
+                        "height": "163"
+                    }
+                ],
+                "metatags": [
+                    {
+                        "og:image": "https://security.apple.com/assets/image/seo-image.jpg",
+                        "next-head-count": "15",
+                        "og:type": "website",
+                        "og:image:alt": "Blog - iMessage with PQ3: The new state of the art in quantum-secure messaging at scale - Apple Security Research",
+                        "og:image:width": "1200",
+                        "og:site_name": "Blog - iMessage with PQ3: The new state of the art in quantum-secure messaging at scale - Apple Security Research",
+                        "viewport": "width=device-width, initial-scale=1.0, viewport-fit=cover",
+                        "og:title": "Blog - iMessage with PQ3: The new state of the art in quantum-secure messaging at scale - Apple Security Research",
+                        "og:image:height": "630",
+                        "og:locale": "en_US",
+                        "og:url": "https://security.apple.com/blog/imessage-pq3/",
+                        "og:description": "We are introducing PQ3, a groundbreaking cryptographic protocol for iMessage that advances the state of the art of end-to-end secure messaging. With compromise-resilient encryption and extensive defenses against even highly sophisticated quantum attacks, PQ3 provides protocol protections that surpass those in all other widely deployed messaging apps."
+                    }
+                ],
+                "cse_image": [
+                    {
+                        "src": "https://security.apple.com/assets/image/seo-image.jpg"
+                    }
+                ]
+            }
+        }
+    ]
+}
