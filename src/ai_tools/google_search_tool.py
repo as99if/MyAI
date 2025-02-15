@@ -9,6 +9,7 @@ import requests
 import random
 from src.ai_tools.groq import groq_inference
 from src.ai_tools.ms_markitdown import generate_markdown_and_summarize, get_markdown_content
+from src.core.core_utils import display_notification
 from src.utils.utils import load_config, split_list
 from urllib.parse import urlencode
 import tracemalloc
@@ -73,19 +74,6 @@ def google_custom_search(query, google_custom_search_api_key, google_custom_sear
         print(f"Error decoding JSON response: {e}")
         raise
 
-# test
-
-
-"""def test_google_custom_search():
-    config = load_config()
-    query = "what is the current temparature of Stuttgart?"
-    api_key = config.get("google_custom_search_api_key")
-    custom_search_engine_id = config.get("google_custom_search_engine_id")
-    items = google_custom_search(query=query, google_custom_search_api_key=api_key, google_custom_search_engine_id=custom_search_engine_id)
-    pprint.pprint(items, indent=2)
-
-test_google_custom_search()"""
-
 
 def skeem_search_results(query, snippets, n: int = 10) -> list[dict]:
     """
@@ -120,8 +108,6 @@ def skeem_search_results(query, snippets, n: int = 10) -> list[dict]:
     blocked_links = []
     for item in first_n:
         try:
-            # test generate_markdwon(llm_client=groq or gemini, file_path=link, llm_model=deepseek or phi4)
-            #content = get_markdown_content(item['link'])
             content = generate_markdown_and_summarize(
                 main_prompt=query,
                 file_path=item['link']
@@ -191,6 +177,34 @@ def custom_deeper_google_research_agent(query, google_custom_search_api_key, goo
     Returns:
         str:
     """
+    planner_memory = []
+    
+    system_prompt = "You are a helpful AI assistant. You are given a list of reponses content from your research. Write a summary of the given information. Extract the most useful information first. There could be bullte points, lists, tables, etc. Put the most relevant information first. Put links as reference in text if necessary."
+    
+    # deep research with planned steps
+    prompt_ds = f"You have Think or create the steps to research deeply on the topic - {query}"
+    prompt_ds_ = {
+            "role": f"assistant",
+            "type": "groq_research_planning_request", 
+            "content": prompt_ds,
+            "timestamp": datetime.now().isoformat()
+        }
+    planner_memory.append(prompt_ds_)
+    # TODO add this to  backup memory
+    
+    response, model = groq_inference(
+            message=prompt_ds_, model=llm, api_key=llm_client_api_key, system_message=system_prompt, task_memory_messages=[])
+    response_ds = {
+        "query": query,
+        "role": f"groq_assistant-{model}",
+        "content": response,
+        "type": "groq_research_planner_response",
+        "timestamp": datetime.now().isoformat()
+    }
+    planner_memory.append(response_ds)
+    # TODO add this to  backup memory
+    
+    
     response = None
     print("searching google")
     search_results = google_custom_search(
@@ -215,14 +229,22 @@ def custom_deeper_google_research_agent(query, google_custom_search_api_key, goo
     # Output the result
     split_responses = []
     print(f"skeeming result split into {n} parts")
-    
+    task_memory = []
+    # TODO to add all inference call in memeory
     for i, sublist_of_skeemed_search_results in enumerate(split_lists_of_skeemed_search_results):
         print(f"Researhing Sublist {i+1}")
         # groq inference for each part
         # on conclusive groq inference again with all the parts as context
         system_prompt = "You are a helpful AI assistant. You are given a google search query and the search results. You need to create a research result, which will be the summary of the given information. Extract the most useful information first. There could be bullte points, lists, tables, etc. Put the most relevant information first. Put links as reference in text if necessary."
         prompt = f"Google search query: {str(query)},\nGoogle search result:\n{json.dumps(sublist_of_skeemed_search_results)}\n\nCreate a research result response from the given information. Put the most relevant information first. Put links as reference in text if necessary."
-        
+        prompt_ = {
+            "role": f"assistant",
+            "type": "groq_google_research_request", 
+            "content": prompt,
+            "timestamp": datetime.now().isoformat()
+        }
+        # TODO: save prompt_ to  backup memory 
+        task_memory.append(prompt_)
         response, model = groq_inference(
             message=prompt, model=llm, api_key=llm_client_api_key, system_message=system_prompt)
 
@@ -230,17 +252,25 @@ def custom_deeper_google_research_agent(query, google_custom_search_api_key, goo
             "role": f"groq_assistant-{model}",
             "inference_index": i+1,
             "type": "search_result_summary", 
-            "content": response
+            "content": response,
+            "timestamp": datetime.now().isoformat()
             }
+        # TODO: save to  backup memory response
+        task_memory.append(response)
+        
+        
         split_responses.append(response)
         time.sleep(60)
     
     print(f"researhing {n} parts finished, requesting conclusive response from groq")
     
     system_prompt = "You are a helpful AI assistant. You are given a list of reponses content from your research. Write a summary of the given information. Extract the most useful information first. There could be bullte points, lists, tables, etc. Put the most relevant information first. Put links as reference in text if necessary."
+    
+    
     prompt = f"Google search query: {str(query)},\nNumber of inference in research:{len(sublist_of_skeemed_search_results)}\nResearch result:\n{json.dumps(split_responses)}\n\nCreate a research result from the given information. Put the most relevant information first. Put links as reference in text if necessary. Be concise and give small reply. Do not write too much text."
+    
     response, model = groq_inference(
-            message=prompt, model=llm, api_key=llm_client_api_key, system_message=system_prompt)
+            message=prompt, model=llm, api_key=llm_client_api_key, system_message=system_prompt, task_memory_messages=planner_memory)
     del system_prompt
     del prompt
     del split_responses
@@ -254,42 +284,23 @@ def custom_deeper_google_research_agent(query, google_custom_search_api_key, goo
         "resurch_llm_api": "groq",
         "crawler": "ms_markitdown",
         "content": response,
-        "type": "custom_deeper_google_research_agent",
+        "role": f"groq_assistant-{model}",
+        "type": "groq_google_research_response",
         "visited_links": visited_links,     # TODO: issue, getting []
         "crawl_blocked_links": blocked_links,       # TODO: check
         "timestamp": datetime.now().isoformat()
     }
+    # TODO: save to memory result
+    
+    
+    # notification
+    display_notification(
+        title="Groq-Google Research Completed",
+        subtitle=query,
+        message="Google research details stored in memory."
+    )
     return result
 
-# test
-
-
-"""
-def test_custom_deeper_google_research_agent():
-    print("starting test")
-    config = load_config()
-    query = "What are the current states of quantum computing research in the world?"
-    api_key = config.get("google_custom_search_api_key")
-    custom_search_engine_id = config.get("google_custom_search_engine_id")
-    result = custom_deeper_google_research_agent(
-        query=query,
-        google_custom_search_api_key=api_key,
-        google_custom_search_engine_id=custom_search_engine_id,
-        llm=config.get("groq_model_name"),
-        llm_client_api_key=config.get("groq_api_key")
-        )
-    print("ustom_deeper_google_research_agent response: ", str(result))
-    del result
-
-
-start_time = time.time()
-tracemalloc.start()
-test_custom_deeper_google_research_agent()
-end_time = time.time() 
-# Calculate propagation delay
-propagation_delay = end_time - start_time
-print(f"Propagation delay: {propagation_delay:.6f} seconds")
-"""
 
 
 def gemini_google_search(context_conversation_history: list = [],  max_retries: int = 3, message_prompt: str = ""):
@@ -377,3 +388,47 @@ def gemini_google_search(context_conversation_history: list = [],  max_retries: 
     except Exception as e:
         logging.error(f"Error in Gemini API call: {str(e)}")
         raise
+
+
+# test
+
+
+"""def test_google_custom_search():
+    config = load_config()
+    query = "what is the current temparature of Stuttgart?"
+    api_key = config.get("google_custom_search_api_key")
+    custom_search_engine_id = config.get("google_custom_search_engine_id")
+    items = google_custom_search(query=query, google_custom_search_api_key=api_key, google_custom_search_engine_id=custom_search_engine_id)
+    pprint.pprint(items, indent=2)
+
+test_google_custom_search()"""
+
+# test
+
+
+"""
+def test_custom_deeper_google_research_agent():
+    print("starting test")
+    config = load_config()
+    query = "What are the current states of quantum computing research in the world?"
+    api_key = config.get("google_custom_search_api_key")
+    custom_search_engine_id = config.get("google_custom_search_engine_id")
+    result = custom_deeper_google_research_agent(
+        query=query,
+        google_custom_search_api_key=api_key,
+        google_custom_search_engine_id=custom_search_engine_id,
+        llm=config.get("groq_model_name"),
+        llm_client_api_key=config.get("groq_api_key")
+        )
+    print("ustom_deeper_google_research_agent response: ", str(result))
+    del result
+
+
+start_time = time.time()
+tracemalloc.start()
+test_custom_deeper_google_research_agent()
+end_time = time.time() 
+# Calculate propagation delay
+propagation_delay = end_time - start_time
+print(f"Propagation delay: {propagation_delay:.6f} seconds")
+"""

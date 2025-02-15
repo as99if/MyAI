@@ -23,7 +23,10 @@ import threading
 import time
 import signal
 import pprint
+import numpy as np
 
+from src.core.visualizer import SpectrogramWidget
+from src.core.visualizer_ import generate_dotted_spectrogram
 from src.utils.utils import load_config
 
 
@@ -185,7 +188,9 @@ class MyAIAssistant:
                 start_time = time.time()
 
                 while play_obj.is_playing():
-                    if self.interruption:  # Stop playback if user speaks
+                    #if True: # if gui enabled
+                    #    self.gui.update_spectrogram(wave_obj, self.kokoro_sample_rate)
+                    if self.interruption:  # Stop playback if user interrupted
                         elapsed_time = time.time() - start_time
                         spoken_chars = int(
                             elapsed_time * self.CHARS_PER_SECOND)
@@ -194,7 +199,7 @@ class MyAIAssistant:
                         play_obj.stop()
                         break
 
-                    time.sleep(0.1)  # Prevent busy-waiting
+                    time.sleep(0.1)  # Prevent busy-waiting # frequency of visualizer
 
                 # If no interruption occurred during this chunk playback
                 if not self.interruption:
@@ -208,6 +213,7 @@ class MyAIAssistant:
         except Exception as e:
             print(f"Error in text-to-speech: {e}")
 
+    
     def monitor_audio_interruption(self):
         """Continuously check if space key is pressed"""
         while True:
@@ -269,10 +275,17 @@ class MyAIAssistant:
         # backup conversation memory
         exit(0)
 
-    async def __run__(self):
+    async def __run__(self, is_test: bool = True):
         # memory procesor and conversation summarizer and all those things will run on call of this function
         # maybe for creating conversation summary every  weeks, we can use a timer to call the function that creates the summary to make context smaller
         print("Listening... (Hold space to record)")
+        if True: # if gui enabled
+            self.gui = SpectrogramWidget()
+        if is_test:
+            self.test_voice_reply()
+            return
+            
+        
         while True:
             message = self.listen()
             if message is None:
@@ -365,3 +378,9 @@ class MyAIAssistant:
             print(f"Error in run: {e}")
         finally:
             loop.close()
+
+
+    def test_voice_reply(self):
+        text = "This is a test message, or text. Whatever.."
+        self.voice_reply(text=text)
+        
