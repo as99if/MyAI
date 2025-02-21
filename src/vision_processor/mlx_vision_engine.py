@@ -90,7 +90,7 @@ class MLXVisionEngine:
         self.processor = None
         self.model_config = None
         self.if_model_loaded = False
-        self.model_name = self.config.get('vlm')
+        self.model_name = self.config.get('vlm') # paligemma2-3b-ft-docci-448-bf16, SmolVLM-500M-Instruct-bf16, mlx-community/SmolVLM-Instruct-bf16
         self.loop_vision_memory = [],
         self.memory_limit = 500
 

@@ -12,6 +12,6 @@
         "required": ["role", "type", "content"]
     },
     "initial_summarise_prompt": "Please provide a thorough summary of the conversation segments given below, while preserving key information and context. Keep important details, decisions, and outcomes. Write bullet points if necessary. Mention dates if necessary in them. Follow JSON schema strictly:\n{json.dumps(json_schema, indent=2)}",
-    "secondary_summariser_prompt": "Please provide a concise summary (re-summarise) of the given conversation summary.. Keep important details, decisions, and outcomes. Write bullet points if necessary. You can remove some unnecessar conversation memory or points. Mention dates if necessary."
-    
+    "secondary_summariser_prompt": "Please provide a concise summary (re-summarise) of the given conversation summary.. Keep important details, decisions, and outcomes. Write bullet points if necessary. You can remove some unnecessar conversation memory or points. Mention dates if necessary.",
+    "agent_system_prompt": "You will be given a text which is the result of an ai agent. Write a short reply ... "
 }

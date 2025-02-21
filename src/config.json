@@ -5,7 +5,7 @@
     "base_url": "http://localhost:50001/v1",
     "llm": "llama3.2-3b-instruct",
     "vlm_base_path": "./models/vlm",
-    "vlm": "SmolVLM-500M-Instruct-bf16",
+    "vlm": "SmolVLM-Instruct-bf16",
     "google_maps_api_key": "AIzaSyD5Tp2tyvz0BS7Y6oue5jvbNaxQh322BGE",
     "google_custom_search_engine_id": "24c143fb02fd94d45",
     "google_custom_search_engine_url": "https://cse.google.com/cse?cx=24c143fb02fd94d45&q=",

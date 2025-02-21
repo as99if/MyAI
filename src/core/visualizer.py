@@ -62,3 +62,5 @@ class SpectrogramWidget(QtWidgets.QWidget):
             self.fig, update, frames=len(t), interval=50, blit=False, repeat=False)
 
         self.canvas.draw()  # Redraw the canvas
+
+# /Users/asifahmed/Development/MyAI/src/speech_engine/test/test01_20s.wav

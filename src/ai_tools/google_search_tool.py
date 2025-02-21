@@ -1,15 +1,18 @@
 from asyncio import sleep
 from datetime import datetime
 import json
+import os
 import pprint
+import tempfile
 import time
 from typing import Any
 import webbrowser
+import markdown
 import requests
 import random
 from src.ai_tools.groq import groq_inference
-from src.ai_tools.ms_markitdown import generate_markdown_and_summarize, get_markdown_content
-from src.core.core_utils import display_notification
+from src.ai_tools.ms_markitdown import generate_markdown_crawled_and_summarize
+from src.core.core_utils import display_notification_with_button
 from src.utils.utils import load_config, split_list
 from urllib.parse import urlencode
 import tracemalloc
@@ -81,7 +84,9 @@ def skeem_search_results(query, snippets, n: int = 10) -> list[dict]:
     - Get remaining links after n
     - Randomly select 3 from remaining if available
     - Process selected links to get content
-    - Return combined results
+    - Crawl all inner links in the selected links
+    - Summarize the contents
+    - Get combined results of all links
 
     Args:
         search_results (_type_): _description_
@@ -108,9 +113,13 @@ def skeem_search_results(query, snippets, n: int = 10) -> list[dict]:
     blocked_links = []
     for item in first_n:
         try:
-            content = generate_markdown_and_summarize(
+            print(f"Visiting page - {item['title']} - {item['link']}")
+            
+            content = generate_markdown_crawled_and_summarize(
                 main_prompt=query,
-                file_path=item['link']
+                file_path=item['link'],
+                if_ingest=False,
+                if_crawl=True
             )
             formatted_content = {
                 "title": item['title'],
@@ -121,6 +130,8 @@ def skeem_search_results(query, snippets, n: int = 10) -> list[dict]:
             del content
             skeemed_search_results.append(formatted_content)
             visited_links.append({"title": item["title"], "link": item['link']})
+            print(f"Skimming complete - {item['title']} - {item['link']}")
+            
             del formatted_content
         except Exception as e:
             formatted_content = {
@@ -129,16 +140,21 @@ def skeem_search_results(query, snippets, n: int = 10) -> list[dict]:
                 "snippet": item['snippet'],
                 "content": "cannot process data from link"
             }
+            print(f"Skimming failed - {item['title']} - {item['link']}")
+            
             skeemed_search_results.append(formatted_content)
             blocked_links.append({"title": item['title'], "link": item['link']})
             del formatted_content
             continue
     for link in random_links:
         try:
-            #content = get_markdown_content(item['link'])
-            content = generate_markdown_and_summarize(
+            print(f"Visiting page - {item['title']} - {item['link']}")
+            
+            content = generate_markdown_crawled_and_summarize(
                 main_prompt=query,
-                file_path=item['link']
+                file_path=item['link'],
+                if_ingest=False,
+                if_crawl=True
             )
             formatted_content = {
                 "title": item['title'],
@@ -146,7 +162,11 @@ def skeem_search_results(query, snippets, n: int = 10) -> list[dict]:
                 "snippet": item['snippet'],
                 "content": content
             }
+            
+            
             visited_links.append({"title": item["title"], "link": item['link']})
+            print(f"Skimming complete - {item['title']} - {item['link']}")
+            
             del content
             skeemed_search_results.append(formatted_content)
             del formatted_content
@@ -155,22 +175,26 @@ def skeem_search_results(query, snippets, n: int = 10) -> list[dict]:
                 "title": item['title'],
                 "link": item['link'],
                 "snippet": item['snippet'],
-                "content": "cannot process data from link"
+                "content": "cannot process data from link",
             }
             skeemed_search_results.append(formatted_content)
+            print(f"Skimming failed - {item['title']} - {item['link']}")
             blocked_links.append({"title": item['title'], "link": item['link']})
             del formatted_content
             continue
 
     return skeemed_search_results, visited_links, blocked_links
 
+markdown_response = """
+        ## Sample
+    """
 
 def custom_deeper_google_research_agent(query, google_custom_search_api_key, google_custom_search_engine_id, llm, llm_client_api_key) -> dict:
     """
     Ask the internet
-    # google
+    # google custom search
     # ms markitdown for crawl
-    # groq for summarise
+    # groq for summarisation
     Args:
         query (str): 
 
@@ -264,19 +288,21 @@ def custom_deeper_google_research_agent(query, google_custom_search_api_key, goo
     
     print(f"researhing {n} parts finished, requesting conclusive response from groq")
     
-    system_prompt = "You are a helpful AI assistant. You are given a list of reponses content from your research. Write a summary of the given information. Extract the most useful information first. There could be bullte points, lists, tables, etc. Put the most relevant information first. Put links as reference in text if necessary."
-    
-    
-    prompt = f"Google search query: {str(query)},\nNumber of inference in research:{len(sublist_of_skeemed_search_results)}\nResearch result:\n{json.dumps(split_responses)}\n\nCreate a research result from the given information. Put the most relevant information first. Put links as reference in text if necessary. Be concise and give small reply. Do not write too much text."
+    system_prompt = "You are a helpful AI assistant. You are given a list of reponses content from your research. Write a summary of the given information, in markdown format. Extract the most useful information first. There could be bullte points, lists, tables, etc. Put the most relevant information first. Put links as reference in text if necessary."
+    prompt = f"Google search query: {str(query)},\nNumber of inference in research:{len(sublist_of_skeemed_search_results)}\nResearch result:\n{json.dumps(split_responses)}\n\nCreate a research result from the given information in Markdown format. Put the most relevant information first. Put links as reference in text if necessary. Be concise and give small reply. Do not write too much text."
     
     response, model = groq_inference(
             message=prompt, model=llm, api_key=llm_client_api_key, system_message=system_prompt, task_memory_messages=planner_memory)
+    markdown_response = f"""
+       {str(response)}
+    """
     del system_prompt
     del prompt
     del split_responses
     del split_lists_of_skeemed_search_results
     del skeemed_search_results
     print(f"got response from groq")
+    
     # TODO: add this to backup memory
     
     result = {
@@ -294,101 +320,39 @@ def custom_deeper_google_research_agent(query, google_custom_search_api_key, goo
     
     
     # notification
-    display_notification(
+    display_notification_with_button(
         title="Groq-Google Research Completed",
         subtitle=query,
         message="Google research details stored in memory."
+        buttons=[
+            "Open"
+        ],
+        button_actions=[
+            embed_markdown_to_browser
+        ]
     )
     return result
 
 
+def embed_markdown_to_browser(markdown_string=markdown_response, browser='default'):
+    """Renders a Markdown string as HTML and displays it in a web browser.
 
-def gemini_google_search(context_conversation_history: list = [],  max_retries: int = 3, message_prompt: str = ""):
-    import json
-    import logging
-    import time
-    import google.generativeai as genai
-    from google.ai.generativelanguage_v1beta.types import content
-    import google.ai.generativelanguage as glm
+    Args:
+        markdown_string: The Markdown string to render.
+        browser:  Specifies the browser to use.  'default' uses the system's
+                  default browser.  You can also specify browser names as
+                  described in the webbrowser module (e.g., 'firefox', 'chrome').
+    """
+    # Convert Markdown to HTML
+    html_content = markdown.markdown(markdown_string)
 
-    with open("src/prompts/system_prompts.json", "r") as f:
-        system_prompt = json.load(f)
+    # Create a temporary HTML file
+    with tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode='w', encoding='utf-8') as f:
+        filepath = f.name
+        f.write(html_content)
 
-    # Configure logging
-    logging.basicConfig(level=logging.INFO)
-    genai.configure(api_key='YOUR_API_KEY')
-    # Model configuration
-    model = genai.GenerativeModel(
-        model_name="gemini-1.0-pro",  # Using stable version
-        generation_config={
-            "temperature": 0.7,
-            "top_p": 0.8,
-            "top_k": 40,
-            "max_output_tokens": 2048,
-            "stop_sequences": [],
-            "candidate_count": 1
-        },
-        safety_settings={
-            "harassment": "block_none",
-            "hate_speech": "block_none",
-            "sexually_explicit": "block_none",
-            "dangerous_content": "block_none"
-        },
-        tools=[
-            genai.protos.Tool(
-                google_search=genai.protos.Tool.GoogleSearch(
-                    enable_citations=True
-                ),
-            ),
-        ],
-    )
-
-    def get_chat_response(session, message_prompt, retry_count=3):
-        try:
-            response = session.send_message(
-                content=message_prompt,
-                generation_config={
-                    "temperature": 0.7,
-                    "candidate_count": 1,
-                    "stop_sequences": [],
-                }
-            )
-
-            if not response.text:
-                raise ValueError("Empty response received")
-
-            return response.text
-
-        except Exception as e:
-            if retry_count < max_retries:
-                logging.warning(
-                    f"Retry {retry_count + 1}/{max_retries} after error: {str(e)}")
-                time.sleep(1)  # Add delay between retries
-                return get_chat_response(session, message_prompt, retry_count + 1)
-            else:
-                logging.error(f"Failed after {max_retries} retries: {str(e)}")
-                raise
-
-    try:
-        # Initialize chat session
-        chat_session = model.start_chat(history=context_conversation_history)
-
-        # Get response with retry mechanism
-        response_text = chat_session.get_chat_response(
-            session=chat_session, message_prompt=message_prompt)
-        # Validate JSON response
-        try:
-            response_json = json.loads(response_text)
-            print(response_json)
-            return response_json
-        except json.JSONDecodeError:
-            logging.error("Invalid JSON response")
-            raise ValueError("Response not in valid JSON format")
-
-    except Exception as e:
-        logging.error(f"Error in Gemini API call: {str(e)}")
-        raise
-
+    # Open the HTML file in the web browser
+    webbrowser.get(browser).open('file://' + os.path.realpath(filepath))
 
 # test
 

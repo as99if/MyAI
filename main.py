@@ -13,7 +13,7 @@ from src.inference_engine.inference_processor import InferenceProcessor
 from src.speech_engine.speech_engine import SpeechEngine
 # from src.memory_processor.conversation_summarizer import ConversationSummarizer
 from src.utils.utils import load_config
-
+from src.utils import gui_util
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +51,8 @@ def __run__():
                                     speech_engine=speech_engine)
             logger.info("AI Assistant initialized successfully")
             my_ai.run()
+            gui_util.gui_interface = my_ai.gui_interface
+            # most of the operational prints will be shown there
             logger.info("AI Assistant started successfully")
         else:
             print("LLM server not running")

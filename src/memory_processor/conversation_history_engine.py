@@ -50,17 +50,24 @@ class ConversationHistoryEngine:
         self.config_key = "config"
         self.redis_url = self.config.get('redis_host', 'localhost')
         self.redis_port = self.config.get('redis_port', 6379)
-        self.optimized_db = self.config.get('redis_live_conversation_history_db', 0)
-        self.backup_db = self.config.get('redis_complete_backup_conversation_history_db', 1)
-        self.config_db = self.config.get('redis_live_conversation_history_db', 2)
         self.redis_password = self.config.get('redis_password', None)
+        
+        # for conversation
+        self.conversation_db = self.config.get('redis_live_conversation_history_db', 0)
+        self.backup_db = self.config.get('redis_complete_backup_conversation_history_db', 1)
         self.client: Optional[redis.Redis] = None
         self.backup_client: Optional[redis.Redis] = None
+        
+        # for knowledgebase and configs
+        self.config_db = self.config.get('redis_config_db', 2)
+        self.vector_db = self.config.get('redis_vector_db', 3)
         self.config_client: Optional[redis.Redis] = None
+        self.vector_client: Optional[redis.Redis] = None
+        
         self.retry_attempts = 3
         self.retry_delay = 1
         self.logger = logging.getLogger(__name__)
-
+    
     async def connect(self) -> None:
         """
         Establish a connection to the Redis server and initialize the JSON structure.
@@ -86,6 +93,15 @@ class ConversationHistoryEngine:
                     decode_responses=True,
                     encoding="UTF-8"
                 )
+                self.vector_client = await redis.Redis(
+                    host=self.redis_url,
+                    port=self.redis_port,
+                    db=self.vector_db,
+                    password=self.redis_password,
+                    decode_responses=True,
+                    encoding="UTF-8"
+                )
+                
                 self.config_client = await redis.Redis(
                     host=self.redis_url,
                     port=self.redis_port,
@@ -122,6 +138,14 @@ class ConversationHistoryEngine:
                         await self.backup_client.json().set(self.redis_key, Path.root_path(), {})
                     return
                 
+                if await self.vector_client.ping():
+                    self.logger.info("Redis connection established successfully for vector storage")
+                    
+                    # Enable AOF persistence for vector storage
+                    await self.vector_client.config_set('appendonly', 'yes')
+                    await self.vector_client.config_set('appendfsync', 'everysec')
+                    return
+                
                 if await self.config_client.ping():
                     self.logger.info("Redis connection established successfully for the backup")
                     
@@ -142,11 +166,33 @@ class ConversationHistoryEngine:
                     raise Exception(f"Redis connection failed after {self.retry_attempts} attempts: {str(e)}")
                 await asyncio.sleep(self.retry_delay)
 
+    async def get_redis_url(self, client: None, db: int = 0) -> str:
+        """
+        Get Redis URL for the backup database.
+        
+        Returns:
+            str: Redis URL in format 'redis://[password@]host:port/db'
+        """
+        if not self.client:
+            raise ValueError("Backup client not initialized")
+            
+        auth = f":{self.redis_password}@" if self.redis_password else ""
+        return f"redis://{auth}{self.redis_url}:{self.redis_port}/{db}"
+    
     async def cleanup(self) -> None:
         """Cleanup Redis connection"""
         if self.client:
             await self.client.aclose()
             self.client = None
+        if self.backup_client:
+            await self.backup_client.aclose()
+            self.backup_client = None
+        if self.config_client:
+            await self.config_client.aclose()
+            self.config_client = None
+        if self.vector_client:
+            await self.vector_client.aclose()
+            self.vector_client = None
 
     
             

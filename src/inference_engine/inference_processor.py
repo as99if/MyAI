@@ -15,7 +15,8 @@ from src.ai_tools.siri_service import execute_siri_command
 import requests
 from langchain.schema import HumanMessage, SystemMessage, AIMessage
 from src.utils.utils import load_config, load_prompt
-
+from langchain_core.tools import Tool
+from langchain.agents import AgentType, initialize_agent, create_openai_tools_agent, AgentExecutor
 
 class ChatMessage(BaseModel):
     role: str
@@ -48,7 +49,8 @@ class InferenceProcessor:
         self.max_context_messages_day_limit = self.config.get(
             'max_context_messages_day_limit', 5)
 
-        self.inference_client = None
+        self.agent = None
+        self.agent_executor = None
         # self._start_server()
         self._initialize_llm_client()
         self.system_prompts = load_prompt()
@@ -67,7 +69,32 @@ class InferenceProcessor:
 
         else:
             raise ValueError("Invalid API specified in config.")
+    
+    def _initialize_agent(self):
+        # Create StructuredTools
+        # Create a prompt template
+        agent_system_prompt = [
+            SystemMessage(content = "You are a helpful assistant that can use tools to perform calculations."),
+            HumanMessage(content={input})
+        ]
 
+        tools = [
+            Tool(
+                func=groq_inference,
+                name="groq_inference",
+                description="Ask Groq for response."
+            ),
+        ]
+        
+        # Create an agent with the tools
+        self.agent = create_openai_tools_agent(self.inference_client, tools, agent_system_prompt)
+        # Create an agent executor
+        self.agent_executor = AgentExecutor(agent=self.agent, tools=tools, verbose=True)
+        
+    def _clean_agent(self):
+        del self.agent
+        del self.agent_executor
+    
     async def _check_inference_server_health(self):
         """Check if inference server is healthy by calling health endpoint"""
         try:
@@ -85,7 +112,7 @@ class InferenceProcessor:
             logging.error(f"Unexpected error during health check: {str(e)}")
             return False
 
-    async def create_chat_completion(self, messages: list = []) -> Any:
+    async def create_chat_completion(self, messages: list = [], command: str = None, if_tool_call: bool = False, tool_list: list = None) -> Any:
         """
         Generate chat completion with context management
 
@@ -121,7 +148,21 @@ class InferenceProcessor:
             if self.config.get("api") == "llama_cpp_python":
                 print("invoking model")
 
-                # openAI or langchain chat_completion call
+                # langchain OpenAI like chat_completion API call
+                
+                if if_tool_call:
+                    if command:
+                        self._initialize_agent()                        
+                        # Run the agent
+                        agent_response = self.agent_executor.invoke({"input": command})
+                        
+                        # show a clickable small box as reply - click here to see result (if result is big or smth) (opens a new window or smth)
+                        # if result is small - show there
+                        
+                        formatted_messages.append(AIMessage(content=f"{agent_response["output"]}"))
+                        formatted_messages.append(HumanMessage(content="Now write a short reply from the agent's response."))
+                        self._clean_agent()
+                        
                 response = await self.inference_client.ainvoke(formatted_messages)
                 # print(response)
 
@@ -129,7 +170,6 @@ class InferenceProcessor:
 
         except Exception as e:
             raise Exception(f"Error during chat completion: {e}")
-
 
 
 # test

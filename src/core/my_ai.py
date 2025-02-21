@@ -24,13 +24,33 @@ import time
 import signal
 import pprint
 import numpy as np
-
+import gradio as gr
+from typing import Tuple, Optional
 from src.core.visualizer import SpectrogramWidget
 from src.core.visualizer_ import generate_dotted_spectrogram
 from src.utils.utils import load_config
 
 
 class MyAIAssistant:
+    """
+    A conversational AI assistant with voice interaction capabilities.
+    
+    This class integrates speech recognition, text-to-speech, and natural language 
+    processing to create an interactive AI assistant. It features:
+    - Real-time voice input processing
+    - Interruptible text-to-speech output
+    - Conversation history management
+    - Web-based GUI interface
+    - Audio visualization
+    
+    Attributes:
+        CHUNK (int): Audio chunk size for processing (2048 samples)
+        FORMAT (int): Audio format (16-bit PCM)
+        CHANNELS (int): Number of audio channels (1 for mono)
+        RATE (int): Sample rate in Hz (44100)
+        THRESHOLD (int): Audio detection threshold
+        CHARS_PER_SECOND (int): Estimated speaking rate for TTS
+    """
     def __init__(self, inference_processor, speech_engine, vision_history_engine = None, conversation_history_engine = None):
         self.computer = None
         self.config = load_config()
@@ -70,13 +90,32 @@ class MyAIAssistant:
         # Interrupting monitoring
         self.monitor_audio_interruption_thread.start()
 
+        self.gui_visualizer = SpectrogramWidget()
+        # Create and launch Gradio interface
+        self.gui_interface = self.create_gradio_ui()
+        self.gui_interface.launch(
+            server_name="0.0.0.0",
+            server_port=7860,
+            share=True,
+            inbrowser=True
+        )
+        
         # Set up signal handler for graceful exit
         signal.signal(signal.SIGINT, self.exit_gracefully)
         signal.signal(signal.SIGTERM, self.exit_gracefully)
                     
 
-    def split_text_into_chunks(self, text, chunk_size=100):
-        """Split text into chunks for progressive TTS"""
+    def split_text_into_chunks(self, text, chunk_size=100) -> list:
+        """
+        Splits text into smaller chunks for progressive text-to-speech processing.
+
+        Args:
+            text (str): The input text to split
+            chunk_size (int, optional): Maximum characters per chunk. Defaults to 100.
+
+        Returns:
+            list: List of text chunks
+        """
         words = text.split()
         chunks = []
         current_chunk = []
@@ -96,8 +135,16 @@ class MyAIAssistant:
 
         return chunks
 
-    def listen(self, duration=5):
-        """Record and transcribe user speech"""
+    def listen(self, duration=5) -> Optional[str]:
+        """
+        Records and transcribes user speech input.
+
+        Args:
+            duration (int, optional): Maximum recording duration in seconds. Defaults to 5.
+
+        Returns:
+            Optional[str]: Transcribed text or None if transcription fails
+        """
         audio_queue = queue.Queue()
         frames = []
 
@@ -156,8 +203,18 @@ class MyAIAssistant:
                     os.remove(self.WAVE_OUTPUT_FILENAME)
                 return None
 
-    def voice_reply(self, text):
-        """Speak text using Silero TTS with interruption handling"""
+    def voice_reply(self, text) -> Tuple[str, str]:
+        """
+        Converts text to speech with interruption handling.
+
+        Args:
+            text (str): Text to be spoken
+
+        Returns:
+            Tuple[str, str]: (spoken_text, remaining_text)
+            - spoken_text: The portion of text that was successfully spoken
+            - remaining_text: Unspoken text if interrupted
+        """
         try:
             # Reset flags and text tracking
             self.interruption = False
@@ -189,7 +246,7 @@ class MyAIAssistant:
 
                 while play_obj.is_playing():
                     #if True: # if gui enabled
-                    #    self.gui.update_spectrogram(wave_obj, self.kokoro_sample_rate)
+                    #    self.gui_visualizer.update_spectrogram(wave_obj, self.kokoro_sample_rate)
                     if self.interruption:  # Stop playback if user interrupted
                         elapsed_time = time.time() - start_time
                         spoken_chars = int(
@@ -215,7 +272,11 @@ class MyAIAssistant:
 
     
     def monitor_audio_interruption(self):
-        """Continuously check if space key is pressed"""
+        """
+        Continuously monitors for user interruptions via keyboard input.
+        Runs in a separate thread to enable real-time interruption detection.
+        """
+
         while True:
             if keyboard.is_pressed('space'):
                 self.interruption = True
@@ -266,7 +327,13 @@ class MyAIAssistant:
             gc.collect()
 
     def exit_gracefully(self):
-        """Handle exiting the program gracefully"""
+        """
+        Performs cleanup operations before program termination:
+        - Stops audio monitoring
+        - Releases PyAudio resources
+        - Cleans up memory
+        - Backs up conversation history
+        """
 
         print("Exiting and clearing loaded model...")
         self.monitor_audio_interruption_thread.join(timeout=1)
@@ -275,24 +342,155 @@ class MyAIAssistant:
         # backup conversation memory
         exit(0)
 
+    def create_gradio_ui(self) -> gr.Blocks:
+        """
+        Creates and configures the Gradio web interface.
+
+        Returns:
+            gr.Blocks: Configured Gradio interface with chat and control components
+        """
+        def on_submit(message: str, history: list) -> Tuple[str, list]:
+            # Simulate async behavior in sync context
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            # Prepare user message
+            user_message = [{
+                "role": "user", 
+                "content": message, 
+                "type": "user_message", 
+                "timestamp": datetime.now().isoformat()
+            }]
+            
+            # Get conversation history
+            recent_conversation = []
+            if self.conversation_history_engine:
+                try:
+                    recent_conversation = loop.run_until_complete(
+                        self.conversation_history_engine.get_recent_conversation()
+                    )
+                    recent_conversation = recent_conversation + user_message
+                    self.conversation_history_engine.add_conversation(user_message)
+                except Exception as e:
+                    print(f"Error getting recent conversation: {e}")
+                    raise e
+            else:
+                recent_conversation = user_message
+            
+            # Get AI response
+            response = loop.run_until_complete(
+                self.inference_processor.create_chat_completion(recent_conversation)
+            )
+            loop.close()
+            
+            # Handle voice reply if enabled
+            if self.voice_reply_enabled:
+                spoken_reply, unspoken_reply = self.voice_reply(response)
+                response_text = f"{spoken_reply}\n{unspoken_reply if unspoken_reply else ''}"
+            else:
+                response_text = response
+                
+            # Update conversation history
+            history.append((message, response_text))
+            return "", history
+
+        def on_voice_toggle(value: bool):
+            self.voice_reply_enabled = value
+            return f"Voice reply {'enabled' if value else 'disabled'}"
+
+        with gr.Blocks(title="MyAI Assistant") as interface:
+            with gr.Row():
+                with gr.Column(scale=3):
+                    chatbot = gr.Chatbot(height=600)
+                    
+                    with gr.Row():
+                        msg = gr.Textbox(
+                            placeholder="Type your message here...",
+                            show_label=False
+                        )
+                        submit = gr.Button("Send")
+                
+                with gr.Column(scale=1):
+                    voice_toggle = gr.Checkbox(
+                        label="Enable Voice Reply",
+                        value=self.voice_reply_enabled
+                    )
+                    status_text = gr.Textbox(
+                        label="Status",
+                        value="Voice reply disabled",
+                        interactive=False
+                    )
+                    if True:  # if gui enabled
+                        spectrogram = gr.Plot(label="Audio Spectrogram")
+
+            msg.submit(
+                on_submit,
+                inputs=[msg, chatbot],
+                outputs=[msg, chatbot]
+            )
+            submit.click(
+                on_submit,
+                inputs=[msg, chatbot],
+                outputs=[msg, chatbot]
+            )
+            voice_toggle.change(
+                on_voice_toggle,
+                inputs=[voice_toggle],
+                outputs=[status_text]
+            )
+
+        return interface
+    
+    def update_chat_interface(self, message: str, is_user: bool = True) -> None:
+        """
+        Updates the chat interface with new messages.
+
+        Args:
+            message (str): Message to display
+            is_user (bool): True if message is from user, False if from assistant
+        """
+
+        # Access the chatbot component from the interface
+        chatbot = self.gui_interface.components[0].value
+        if chatbot is None:
+            chatbot = []
+            
+        # Add the new message to the chat history
+        if is_user:
+            chatbot.append((message, None))
+        else:
+            # Update the last assistant message if it exists
+            if chatbot and chatbot[-1][1] is None:
+                chatbot[-1] = (chatbot[-1][0], message)
+            else:
+                chatbot.append((None, message))
+                
+        # Update the interface
+        self.gui_interface.components[0].update(value=chatbot)
+    
     async def __run__(self, is_test: bool = True):
+        """
+        Main execution loop for the assistant.
+
+        Args:
+            is_test (bool): If True, runs in test mode with sample response
+        """
+        
         # memory procesor and conversation summarizer and all those things will run on call of this function
         # maybe for creating conversation summary every  weeks, we can use a timer to call the function that creates the summary to make context smaller
-        print("Listening... (Hold space to record)")
-        if True: # if gui enabled
-            self.gui = SpectrogramWidget()
+        
         if is_test:
             self.test_voice_reply()
             return
             
-        
+        print("Listening... (Hold space to record)")
         while True:
             message = self.listen()
             if message is None:
                 continue
 
             print("Transcription:", message)
-
+            
             # LLM chat completion
             # Prepare context messages
             user_message =[{"role": "user", "content": message, type: "user_message", "timestamp": datetime.now().isoformat()}]
@@ -320,13 +518,11 @@ class MyAIAssistant:
                     raise e
             else:
                 recent_conversation = recent_conversation + user_message
+            # print of stream in gradio ui
+            self.update_chat_interface(message, is_user=True)
 
             response = await self.inference_processor.create_chat_completion(recent_conversation)
-            # print("@@@@@@@@@@@")
-            # print(json.dumps(response.dict()))
-            # response = response.content
-            # print("@@@")
-            # print(response)
+
             # voice reply
             if self.voice_reply_enabled:
                 # Speak the Computer's reply with interruption handling
@@ -334,17 +530,19 @@ class MyAIAssistant:
                 if self.conversation_history_engine:
                     self.conversation_history_engine.add_conversation([
                         {
-                            "role": "assistant", "content": self.spoken_text, type: "spoken_computer_message", "timestamp": datetime.now().isoformat()
+                            "role": "assistant", "content": spoken_reply, type: "spoken_computer_message", "timestamp": datetime.now().isoformat()
                         }
                     ])
                     if self.remaining_text != "":
                         self.conversation_history_engine.add_conversation([
                             {
-                                "role": "assistant", "content": self.spoken_text, type: "unspoken_remaining_computer_message", "timestamp": datetime.now().isoformat()
+                                "role": "assistant", "content": unspoken_reply, type: "unspoken_remaining_computer_message", "timestamp": datetime.now().isoformat()
                             }
                         ])
                 print(f"Computer Reply: {spoken_reply}")
-
+                # print of stream in gradio ui
+                self.update_chat_interface(spoken_reply, is_user=False)
+                self.update_chat_interface(unspoken_reply, is_user=False)
             else:
                 print(f"Computer Reply: {response}")
                 if self.conversation_history_engine:
@@ -353,6 +551,8 @@ class MyAIAssistant:
                             "role": "assistant", "content": response, type: "computer_message", "timestamp": datetime.now().isoformat()
                         }
                     ])
+                # print of stream in gradio ui
+                self.update_chat_interface(response, is_user=False)
 
             if "clean and shutdown" in message.lower():
                 print("Exiting...")
@@ -384,3 +584,4 @@ class MyAIAssistant:
         text = "This is a test message, or text. Whatever.."
         self.voice_reply(text=text)
         
+
