@@ -9,25 +9,24 @@ MyAI
 Lightweight local AI voice assistant with functionalities, targetted for edge devices.
 
 Used stack:
-- llama.cpp (llama-cpp-python)
+- llama.cpp (llama-cpp-python) server
 - whisper.cpp (pywhispercpp)
 - kokoro-onnx
 - redis
 
-```shell
-make servers-build
-make servers-run
-```
   
 curl silero models for stt tts and vad
 ```shell
 python3 -m venv .venv
-brew install ffmpeg or apt-get install ffmpeg
+brew install portaudio
+brew install ffmpeg
 pip install --upgrade pip
 pip install -r requrements.txt
-make servers-run  # for ollama redis dbs
+make db-run  # for redis dbs
 python -m src.inference_engine.inference_server
-python -m main
+python -m main # in another terminal, or run inference server as daemon
+brew install mactop
+sudo mactop
 ```
 
 Run tests

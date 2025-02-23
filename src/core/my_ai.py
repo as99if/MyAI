@@ -12,52 +12,34 @@ import numpy as np
 import queue
 import time
 import gc
-import torch
-from pydub import AudioSegment
+# import torch
+# from pydub import AudioSegment
 import math
-import simpleaudio as sa
 import io
 import keyboard  # Add this import
 import gc
 import threading
+import simpleaudio
 import time
 import signal
 import pprint
 import numpy as np
-import gradio as gr
+# import gradio as gr
 from typing import Tuple, Optional
-from src.core.visualizer import SpectrogramWidget
-from src.core.visualizer_ import generate_dotted_spectrogram
+# from src.core.visualizer import SpectrogramWidget
+# from src.core.visualizer_ import generate_dotted_spectrogram
 from src.utils.utils import load_config
 
 
 class MyAIAssistant:
-    """
-    A conversational AI assistant with voice interaction capabilities.
     
-    This class integrates speech recognition, text-to-speech, and natural language 
-    processing to create an interactive AI assistant. It features:
-    - Real-time voice input processing
-    - Interruptible text-to-speech output
-    - Conversation history management
-    - Web-based GUI interface
-    - Audio visualization
-    
-    Attributes:
-        CHUNK (int): Audio chunk size for processing (2048 samples)
-        FORMAT (int): Audio format (16-bit PCM)
-        CHANNELS (int): Number of audio channels (1 for mono)
-        RATE (int): Sample rate in Hz (44100)
-        THRESHOLD (int): Audio detection threshold
-        CHARS_PER_SECOND (int): Estimated speaking rate for TTS
-    """
     def __init__(self, inference_processor, speech_engine, vision_history_engine = None, conversation_history_engine = None):
         self.computer = None
         self.config = load_config()
         self.inference_processor = inference_processor
         self.conversation_history_engine = conversation_history_engine
-        self.voice_reply_enabled = self.config.get(
-            'voice_reply_enabled', False)
+        self.if_gui_enabled = self.config.get('gui_enabled', False)
+        self.voice_reply_enabled = self.config.get('voice_reply_enabled', False)
         
         self.tts_engine = speech_engine.tts_engine
         self.asr_engine = speech_engine.asr_engine
@@ -90,15 +72,8 @@ class MyAIAssistant:
         # Interrupting monitoring
         self.monitor_audio_interruption_thread.start()
 
-        self.gui_visualizer = SpectrogramWidget()
-        # Create and launch Gradio interface
-        self.gui_interface = self.create_gradio_ui()
-        self.gui_interface.launch(
-            server_name="0.0.0.0",
-            server_port=7860,
-            share=True,
-            inbrowser=True
-        )
+        # self.gui_visualizer = SpectrogramWidget()
+        
         
         # Set up signal handler for graceful exit
         signal.signal(signal.SIGINT, self.exit_gracefully)
@@ -224,7 +199,7 @@ class MyAIAssistant:
             # Split text into manageable chunks
             chunks = self.split_text_into_chunks(text)
 
-            # detect kez press for interruption handling
+            # detect key press for interruption handling
 
             # Process each chunk of text for TTS synthesis and playback
             for i, chunk in enumerate(chunks):
@@ -237,7 +212,7 @@ class MyAIAssistant:
                     [chunk], voice="am_adam", speed=0.92, lang="en-us"
                 )
                 print("Playing audio...")
-                wave_obj = sa.WaveObject(
+                wave_obj = simpleaudio.WaveObject(
                     samples, num_channels=1, bytes_per_sample=2, sample_rate=self.kokoro_sample_rate)
 
                 # Play the generated audio and monitor interruptions during playback
@@ -291,34 +266,15 @@ class MyAIAssistant:
         """Cleanup method for graceful exit"""
         try:
             # Delete all PyTorch tensors and models
-            for obj in gc.get_objects():
-                if torch.is_tensor(obj):
-                    del obj
-
-            # Clear conversation history
-            if hasattr(self, 'conversation_history_engine'):
-                self.conversation_history_engine.clear()
-
-            # Release TTS and ASR engines
-            if hasattr(self, 'tts_engine'):
-                del self.tts_engine
-            if hasattr(self, 'asr_engine'):
-                del self.asr_engine
-
-            # Clear audio resources
-            if hasattr(self, 'stream'):
-                self.stream.stop_stream()
-                self.stream.close()
-            if hasattr(self, 'audio'):
-                self.audio.terminate()
-
-            # Remove temporary files
-            if os.path.exists(self.WAVE_OUTPUT_FILENAME):
-                os.remove(self.WAVE_OUTPUT_FILENAME)
+            # for obj in gc.get_objects():
+            #    if torch.is_tensor(obj):
+            #        del obj
+            pass
+            
 
             # Force GPU memory cleanup
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
+            # if torch.cuda.is_available():
+            #    torch.cuda.empty_cache()
 
         except Exception as e:
             print(f"Error during cleanup: {e}")
@@ -338,137 +294,35 @@ class MyAIAssistant:
         print("Exiting and clearing loaded model...")
         self.monitor_audio_interruption_thread.join(timeout=1)
         self.pyaudio.terminate()
-        self.__del__()
+        # Clear conversation history
+        if hasattr(self, 'conversation_history_engine'):
+            self.conversation_history_engine.clear()
+
+        # Release TTS and ASR engines
+        if hasattr(self, 'tts_engine'):
+            del self.tts_engine
+        if hasattr(self, 'asr_engine'):
+            del self.asr_engine
+
+        # Clear audio resources
+        if hasattr(self, 'stream'):
+            self.stream.stop_stream()
+            self.stream.close()
+        if hasattr(self, 'audio'):
+            self.audio.terminate()
+
+            # Remove temporary files
+        if os.path.exists(self.WAVE_OUTPUT_FILENAME):
+            os.remove(self.WAVE_OUTPUT_FILENAME)
+        
+        # delete pytorch memory pointers
+        # self.__del__()
         # backup conversation memory
         exit(0)
 
-    def create_gradio_ui(self) -> gr.Blocks:
-        """
-        Creates and configures the Gradio web interface.
-
-        Returns:
-            gr.Blocks: Configured Gradio interface with chat and control components
-        """
-        def on_submit(message: str, history: list) -> Tuple[str, list]:
-            # Simulate async behavior in sync context
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            
-            # Prepare user message
-            user_message = [{
-                "role": "user", 
-                "content": message, 
-                "type": "user_message", 
-                "timestamp": datetime.now().isoformat()
-            }]
-            
-            # Get conversation history
-            recent_conversation = []
-            if self.conversation_history_engine:
-                try:
-                    recent_conversation = loop.run_until_complete(
-                        self.conversation_history_engine.get_recent_conversation()
-                    )
-                    recent_conversation = recent_conversation + user_message
-                    self.conversation_history_engine.add_conversation(user_message)
-                except Exception as e:
-                    print(f"Error getting recent conversation: {e}")
-                    raise e
-            else:
-                recent_conversation = user_message
-            
-            # Get AI response
-            response = loop.run_until_complete(
-                self.inference_processor.create_chat_completion(recent_conversation)
-            )
-            loop.close()
-            
-            # Handle voice reply if enabled
-            if self.voice_reply_enabled:
-                spoken_reply, unspoken_reply = self.voice_reply(response)
-                response_text = f"{spoken_reply}\n{unspoken_reply if unspoken_reply else ''}"
-            else:
-                response_text = response
-                
-            # Update conversation history
-            history.append((message, response_text))
-            return "", history
-
-        def on_voice_toggle(value: bool):
-            self.voice_reply_enabled = value
-            return f"Voice reply {'enabled' if value else 'disabled'}"
-
-        with gr.Blocks(title="MyAI Assistant") as interface:
-            with gr.Row():
-                with gr.Column(scale=3):
-                    chatbot = gr.Chatbot(height=600)
-                    
-                    with gr.Row():
-                        msg = gr.Textbox(
-                            placeholder="Type your message here...",
-                            show_label=False
-                        )
-                        submit = gr.Button("Send")
-                
-                with gr.Column(scale=1):
-                    voice_toggle = gr.Checkbox(
-                        label="Enable Voice Reply",
-                        value=self.voice_reply_enabled
-                    )
-                    status_text = gr.Textbox(
-                        label="Status",
-                        value="Voice reply disabled",
-                        interactive=False
-                    )
-                    if True:  # if gui enabled
-                        spectrogram = gr.Plot(label="Audio Spectrogram")
-
-            msg.submit(
-                on_submit,
-                inputs=[msg, chatbot],
-                outputs=[msg, chatbot]
-            )
-            submit.click(
-                on_submit,
-                inputs=[msg, chatbot],
-                outputs=[msg, chatbot]
-            )
-            voice_toggle.change(
-                on_voice_toggle,
-                inputs=[voice_toggle],
-                outputs=[status_text]
-            )
-
-        return interface
     
-    def update_chat_interface(self, message: str, is_user: bool = True) -> None:
-        """
-        Updates the chat interface with new messages.
-
-        Args:
-            message (str): Message to display
-            is_user (bool): True if message is from user, False if from assistant
-        """
-
-        # Access the chatbot component from the interface
-        chatbot = self.gui_interface.components[0].value
-        if chatbot is None:
-            chatbot = []
-            
-        # Add the new message to the chat history
-        if is_user:
-            chatbot.append((message, None))
-        else:
-            # Update the last assistant message if it exists
-            if chatbot and chatbot[-1][1] is None:
-                chatbot[-1] = (chatbot[-1][0], message)
-            else:
-                chatbot.append((None, message))
-                
-        # Update the interface
-        self.gui_interface.components[0].update(value=chatbot)
     
-    async def __run__(self, is_test: bool = True):
+    async def __run__(self, is_test: bool = False):
         """
         Main execution loop for the assistant.
 
@@ -519,7 +373,8 @@ class MyAIAssistant:
             else:
                 recent_conversation = recent_conversation + user_message
             # print of stream in gradio ui
-            self.update_chat_interface(message, is_user=True)
+            # if self.if_gui_enabled:
+            #     self.update_chat_interface(message, is_user=True)
 
             response = await self.inference_processor.create_chat_completion(recent_conversation)
 
@@ -541,8 +396,9 @@ class MyAIAssistant:
                         ])
                 print(f"Computer Reply: {spoken_reply}")
                 # print of stream in gradio ui
-                self.update_chat_interface(spoken_reply, is_user=False)
-                self.update_chat_interface(unspoken_reply, is_user=False)
+                # if self.if_gui_enabled:
+                #     self.update_chat_interface(spoken_reply, is_user=False)
+                #     self.update_chat_interface(unspoken_reply, is_user=False)
             else:
                 print(f"Computer Reply: {response}")
                 if self.conversation_history_engine:
@@ -552,7 +408,8 @@ class MyAIAssistant:
                         }
                     ])
                 # print of stream in gradio ui
-                self.update_chat_interface(response, is_user=False)
+                # if self.if_gui_enabled:
+                #     self.update_chat_interface(response, is_user=False)
 
             if "clean and shutdown" in message.lower():
                 print("Exiting...")
@@ -562,9 +419,11 @@ class MyAIAssistant:
     
         
     def run(self):
-        """self.computer = threading.Thread(target=self.__run__, name="computer")
+        """
+        self.computer = threading.Thread(target=self.__run__, name="computer")
         self.computer.start()
-        self.computer.join()"""
+        self.computer.join()
+        """
         
         """Run the assistant in an async event loop"""
         try:

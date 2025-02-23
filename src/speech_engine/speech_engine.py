@@ -78,10 +78,10 @@ ASREngine:
 
 import multiprocessing
 import os
-import soundfile as sf
+# import soundfile as sf
 from kokoro_onnx import Kokoro
 from pywhispercpp.model import Model as Whisper_ccp
-import torch
+# import torch
 from pydub import AudioSegment
 # import whisper
 # from pathlib import Path

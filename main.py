@@ -6,17 +6,39 @@ import asyncio
 import multiprocessing
 from pathlib import Path
 
+from fastapi import APIRouter, FastAPI, HTTPException
+from pydantic import BaseModel
+
 from src.ai_configurations.app_configuration import AppConfiguration
+from src.api.api import ChatAPI
 from src.core.my_ai import MyAIAssistant
+from src.core.my_ai_ui import MyAIUI
 from src.inference_engine.inference_processor import InferenceProcessor
 # from src.memory_processor.conversation_history_engine import ConversationHistoryEngine
 from src.speech_engine.speech_engine import SpeechEngine
 # from src.memory_processor.conversation_summarizer import ConversationSummarizer
 from src.utils.utils import load_config
 from src.utils import gui_util
-
+import uvicorn
 logger = logging.getLogger(__name__)
 
+
+async def start_fastapi_server(app):
+    config = uvicorn.Config(app, host="0.0.0.0", port=9999)
+    server = uvicorn.Server(config)
+    await server.serve()
+
+async def my_ai_run(my_ai, app):
+    if my_ai.if_gui_enabled:
+        await asyncio.gather(
+            my_ai.run(),
+            start_fastapi_server(app)
+        )
+    else:
+        await asyncio.gather(
+            my_ai.run(),
+            start_fastapi_server(app)   #, gui
+        )
 
 def __run__():
     try:
@@ -50,9 +72,27 @@ def __run__():
                                     conversation_history_engine=conveversation_history_engine,
                                     speech_engine=speech_engine)
             logger.info("AI Assistant initialized successfully")
-            my_ai.run()
-            gui_util.gui_interface = my_ai.gui_interface
-            # most of the operational prints will be shown there
+            
+            app = FastAPI()
+
+            @app.get("/")
+            def read_root():
+                return {"message": "My AI API!"}
+
+            chat_api = ChatAPI(conversation_history_engine=conveversation_history_engine, inference_processor=inference_processor)
+            app.include_router(chat_api.router)
+            
+            if config.get('api_only'):  
+                # start my_ai api server only          
+                uvicorn.run(app, host="0.0.0.0", port=9999)
+                logger.info("My AI server API started successfully")
+                
+            else:
+                # start FastAPI serrver 'app' parallaly of concurrently to the my_ai.run and gui
+                asyncio.run(my_ai_run(my_ai, app))
+                
+
+            
             logger.info("AI Assistant started successfully")
         else:
             print("LLM server not running")
@@ -69,7 +109,7 @@ def __run__():
         raise Exception(f"Error during initialization: {str(e)}")
 
 if __name__ == "__main__":
-
+    
     computer = multiprocessing.Process(target=__run__, name="computer")
     computer.start()
     computer.join()

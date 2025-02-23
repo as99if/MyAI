@@ -101,7 +101,7 @@ def get_sitemap_urls(url):
     Returns:
         List[str]: List of URLs
     """
-    # sitemap_url = "https://ai.pydantic.dev/sitemap.xml"
+    sitemap_url = f"{url}/sitemap.xml"
     try:
         response = requests.get(sitemap_url)
         response.raise_for_status()
@@ -121,11 +121,17 @@ def get_sitemap_urls(url):
 
 
 # test
+
 """
 def test_get_markdown_content():
     path = "https://stackoverflow.com/questions/3437059/does-python-have-a-string-contains-substring-method"
+    path = "https://www.google.com/search?q=search&client=safari"
     r = get_markdown_content(path)
     print(r)
     
 test_get_markdown_content()
 """
+
+
+
+# https://www.google.com/search?q=search&client=safari&sca_esv=8fd1ed7eb01c4b5e&source=hp&ei=JF66Z6m6OpON9u8P847UkAw&iflsig=ACkRmUkAAAAAZ7psNDcMO-Y3INqqSxCZRcn3tpqvuaLD&ved=0ahUKEwip3J34t9iLAxWThv0HHXMHFcIQ4dUDCBE&uact=5&oq=search&gs_lp=Egdnd3Mtd2l6IgZzZWFyY2gyCBAAGIAEGLEDMgUQABiABDIIEC4YgAQYsQMyCBAuGIAEGLEDMgUQABiABDIFEAAYgAQyBRAAGIAEMgUQABiABDIFEAAYgAQyCBAAGIAEGLEDSKQPUL8BWP4LcAF4AJABAJgBRaAB9gKqAQE2uAEDyAEA-AEBmAIHoALWA6gCCsICChAuGAMY6gIYjwHCAgoQABgDGOoCGI8BwgIFEC4YgATCAgsQABiABBixAxiDAcICDhAuGIAEGLEDGIMBGIoFwgILEC4YgAQY0QMYxwHCAg4QABiABBixAxiDARiKBcICCxAuGIAEGLEDGIMBwgIOEC4YgAQYxwEYjgUYrwHCAg4QLhiABBixAxjRAxjHAcICDhAuGIAEGLEDGMcBGK8BmAMH8QVY_AchiBfbQJIHATegB8RI&sclient=gws-wiz&sei=Kl66Z5-PAoiK9u8P96i8kA4

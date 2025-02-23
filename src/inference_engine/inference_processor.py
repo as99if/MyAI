@@ -131,7 +131,7 @@ class InferenceProcessor:
             content=f"Okay."
         ))
         
-        # Format user and assistant messages
+        # Format user and assistant messages (from recent and new messages )
         for msg in messages:
             if msg["role"] == "user":
                 formatted_messages.append(HumanMessage(content=msg["content"]))
@@ -158,13 +158,13 @@ class InferenceProcessor:
                         
                         # show a clickable small box as reply - click here to see result (if result is big or smth) (opens a new window or smth)
                         # if result is small - show there
-                        
-                        formatted_messages.append(AIMessage(content=f"{agent_response["output"]}"))
+                        agent_response = agent_response["output"]
+                        formatted_messages.append(AIMessage(content=f"{agent_response}"))
                         formatted_messages.append(HumanMessage(content="Now write a short reply from the agent's response."))
                         self._clean_agent()
                         
                 response = await self.inference_client.ainvoke(formatted_messages)
-                # print(response)
+                print(response)
 
                 return response
 

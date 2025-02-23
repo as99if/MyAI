@@ -8,8 +8,8 @@ services:
     volumes:
       - redis_data:/data
     command: redis-stack-server --appendonly yes --appendfsync everysec
-    networks:
-      - myai-network
+    #    networks:
+    #  - myai-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -19,17 +19,13 @@ services:
 
 
 volumes:
-  models:
-    driver: local
-  llama_cpp_data:
-    driver: local
   redis_data:
     driver: local
 
-networks:
-  myai-network:
-    name: myai-network
-    driver: bridge
+#networks:
+#  myai-network:
+#    name: myai-network
+#    driver: bridge
 # docker rm -f $(docker ps -aq)
 # docker rmi $(docker images -q) -f
 # docker builder prune -af

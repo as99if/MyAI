@@ -1,4 +1,4 @@
-import google.generativeai as genai
+"""import google.generativeai as genai
 
 def gemini_query(query):
     model = genai.GenerativeModel('gemini-pro')
@@ -94,3 +94,4 @@ def gemini_google_search(context_conversation_history: list = [],  max_retries: 
         logging.error(f"Error in Gemini API call: {str(e)}")
         raise
 
+"""

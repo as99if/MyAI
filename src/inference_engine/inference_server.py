@@ -61,5 +61,7 @@ class InferenceServer:
             self.inference_server = None
             self.server_run = None
 
-i = InferenceServer()
-i.start_server()
+
+if __name__ == "__main__":
+    i = InferenceServer()
+    i.start_server()

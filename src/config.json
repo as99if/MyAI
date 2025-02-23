@@ -1,9 +1,11 @@
 {
-    "voice_reply_deactivated": true,
+    "voice_reply_enabled": false,
+    "gui_enabled": true,
+    "api_only": false,
     "omni_mode": true,
     "api": "llama_cpp_python",
     "base_url": "http://localhost:50001/v1",
-    "llm": "llama3.2-3b-instruct",
+    "llm": "Tiny-Agent-a-3B.f16", 
     "vlm_base_path": "./models/vlm",
     "vlm": "SmolVLM-Instruct-bf16",
     "google_maps_api_key": "AIzaSyD5Tp2tyvz0BS7Y6oue5jvbNaxQh322BGE",

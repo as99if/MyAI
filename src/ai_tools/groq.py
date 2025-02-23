@@ -6,7 +6,6 @@ import pprint
 from typing import Any
 from groq import Groq
 
-from src.ai_tools.tools_utils import process_chat_complettion_prompt
 from src.utils.utils import load_config
 
 def groq_inference(message: str, system_message: str, model: str, api_key: str, temperature: int = 0.8, max_completion_tokens: int = 2048, is_think_needed: bool = False, task_memory_messages: list[Any] = []) -> tuple[str, str]:
@@ -38,7 +37,7 @@ def groq_inference(message: str, system_message: str, model: str, api_key: str, 
     
     with Groq(api_key=api_key) as client:
         chat_completion = client.chat.completions.create(
-            messages=,
+            messages=message,
             model = model,
             temperature=temperature,
             max_completion_tokens=max_completion_tokens,
