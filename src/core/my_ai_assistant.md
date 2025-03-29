@@ -25,7 +25,6 @@ classDiagram
         +voice_reply()
         +monitor_audio_interruption()
         +backup_conversation_history()
-        +__del__()
         +exit_gracefully()
         +create_gradio_ui()
         +update_chat_interface()
@@ -140,3 +139,104 @@ stateDiagram-v2
     Responding --> Idle
     Idle --> [*]: Exit Signal
 ```
+
+
+
+# process_and_create_chat_generation Flow
+
+```mermaid
+flowchart TD
+    %% Initial message handling
+    A[Start] --> B{Vision\nEnabled?}
+    B -->|No| C[Create Basic Message]
+    B -->|Yes| D[Create Vision Message]
+    
+    %% Vision message processing
+    D -->|Screenshot| E1[Add Screenshot Text]
+    D -->|Camera Feed| E2[Add Camera Feed Text]
+    D -->|Video File| E3[Add Video File Text]
+    D -->|Image URLs| E4[Process Image URLs]
+    E1 & E2 & E3 & E4 --> F[Format Vision Message]
+    
+    C & F --> G{Check History\nEngine}
+    
+    %% Conversation history handling
+    G -->|Available| H1[Get Recent History]
+    G -->|Not Available| H2[Create Empty History]
+    H1 & H2 --> I[Add User Message]
+    I --> J[Store in Database]
+    
+    %% Generate AI Response
+    I --> K[Generate AI Response]
+    
+    %% Process Response
+    K --> L{Voice Reply\nEnabled?}
+    
+    %% Handle different response types
+    L -->|No| M1[Return Text Response]
+    L -->|Yes| N{Is API Request?}
+    
+    N -->|Yes & Audio| O1[Generate Audio]
+    N -->|Yes & No Audio| M1
+    N -->|No| O2[Generate Voice Reply]
+    
+    %% Voice reply processing
+    O2 --> P1[Process Spoken Part]
+    O2 --> P2[Handle Interruptions]
+    
+    %% Store responses
+    P1 --> Q1[Store Spoken Reply]
+    P2 --> Q2[Store Unspoken Reply]
+    M1 --> Q3[Store Text Reply]
+    
+    %% Final response
+    Q1 & Q2 & Q3 --> R[Return Final Response]
+    O1 --> R
+    R --> S[End]
+
+    %% Styling
+    classDef process fill:#f0f0f0,stroke:#333,stroke-width:2px
+    classDef decision fill:#fffbd6,stroke:#333,stroke-width:2px
+    classDef storage fill:#e1f3ff,stroke:#333,stroke-width:2px
+    
+    class A,C,D,E1,E2,E3,E4,F,I,K,M1,O1,O2,P1,P2 process
+    class B,G,L,N decision
+    class J,Q1,Q2,Q3 storage
+```
+
+## Flow Description
+
+### 1. Message Processing
+- Checks if vision features are enabled
+- Creates appropriate message format based on input type
+- Handles different media types (screenshots, camera feed, video files, images)
+
+### 2. Conversation History
+- Verifies availability of conversation history engine
+- Either retrieves existing conversation or creates new context
+- Stores user message in database
+
+### 3. AI Response Generation
+- Processes conversation through inference engine
+- Generates AI response based on context
+
+### 4. Response Processing
+Three main paths:
+1. **Text Only**
+   - Direct text response without voice
+   - Stores in history and returns
+
+2. **API Request**
+   - Handles audio generation if requested
+   - Returns combined audio and text response
+
+3. **Voice Reply**
+   - Generates voice output
+   - Handles potential interruptions
+   - Manages both spoken and unspoken parts
+   - Stores all components in history
+
+### 5. Final Response
+- Formats appropriate response type
+- Ensures all responses are stored in conversation history
+- Returns formatted message segment
