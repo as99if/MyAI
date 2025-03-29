@@ -1,3 +1,9 @@
+# python flet or smth. to create flutter app
+# vision processing in client flutter app for iphone and macos
+# rest api form vision-indeference with my_ai postprocess
+
+https://pypi.org/project/instructor/
+
 https://code.iaflw.com/2025/02/grounding-results-with-google-search.html
 
 
@@ -23,8 +29,9 @@ brew install ffmpeg
 pip install --upgrade pip
 pip install -r requrements.txt
 make db-run  # for redis dbs
-python -m src.inference_engine.inference_server
-python -m main # in another terminal, or run inference server as daemon
+python -m src.inference_engine.inference_server # has both, text and multimodal model
+# python -m main # in another terminal, or run inference server as daemon
+python flet run src/ui/my_ai_ui.py # flutter app
 brew install mactop
 sudo mactop
 ```
@@ -46,6 +53,12 @@ CMAKE_ARGS="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS -DGGML_METAL=on" \
 
 
 ---
+replace google (if good)
+https://github.com/jina-ai/node-serp
+
+replace deepseek gguf and extra vlm engine with phi4 multimodal
+https://techcommunity.microsoft.com/blog/educatordeveloperblog/welcome-to-the-new-phi-4-models---microsoft-phi-4-mini--phi-4-multimodal/4386037
+
 
 google cloud console api's (asif.drmc21 - project Gemini API)
 (https://console.cloud.google.com/google/maps-apis/api-list?inv=1&invt=AboExg&project=gen-lang-client-0930623728)

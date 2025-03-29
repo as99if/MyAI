@@ -4,9 +4,14 @@
 **/*.pyd
 .venv/
 venv/
-llm/
 .env
-SiLLM/
 src/inference_engine/llm/
 src/speech_engine/models/
-**/models/
+**/models/llm/**
+**/models/vlm/**
+**/models/speech/**
+**/models/omni/**
+**/.vscode
+**/.idea
+**/.gradio
+**/.cache

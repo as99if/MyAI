@@ -101,11 +101,12 @@ class ASREngine:
         
         # self.engine = whisper.load_model("medium.en", download_root="./models/speech/", in_memory=False)
         self.engine = Whisper_ccp(
-            model= 'large-v3-turbo-q5_0',   # large-v3-turbo, large-v3, large-v3-turbo-q5_0, large-v3-turbo-q5_0, medium.en, large-v3
+            model="large-v3-turbo", # large-v3, large-v3-turbo-q5_0, large-v3-turbo-q5_0, medium.en, large-v3
             models_dir="./models/speech/",
             print_realtime=False,
             print_progress=False
         )
+        
 
     
 

@@ -1,8 +1,8 @@
 from openai import OpenAI
-
+from src.config.config import api_keys
 
 api_key = ""
-client = OpenAI(api_key=api_key)
+client = OpenAI(api_key=api_keys.openai_api_key)
 
 response = client.chat.completions.create(
   model="gpt-4o",

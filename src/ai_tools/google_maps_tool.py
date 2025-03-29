@@ -13,10 +13,11 @@ import webbrowser
 from src.utils.utils import load_config
 import googlemaps
 from datetime import datetime
+from src.config.config import api_keys
 
 def google_maps_client(location):
     config = load_config()
-    gmaps = googlemaps.Client(key=config.get('google_maps_api_key'))
+    gmaps = googlemaps.Client(key=api_keys.google_maps_api_key)
 
     # Geocoding an address
     geocode_result = gmaps.geocode(location)
@@ -49,7 +50,7 @@ def embed_maps(location):
     print("embed maps")
     config = load_config()
     encoded_location = urllib.parse.quote(location)
-    iframe_src = f"https://www.google.com/maps/embed/v1/place?key={config.get('google_maps_api_key')}&q={encoded_location}"
+    iframe_src = f"https://www.google.com/maps/embed/v1/place?key={api_keys.google_maps_api_key}&q={encoded_location}"
 
     iframe_html = f"""
     

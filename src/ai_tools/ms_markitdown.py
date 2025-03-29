@@ -5,7 +5,7 @@ import requests
 
 from src.ai_tools.groq import groq_inference
 from src.utils.utils import load_config
-
+from src.config.config import api_keys
 
 def generate_markdown_crawled_and_summarize(query, url, if_crawl: bool = False, if_ingest: bool = False):
     
@@ -14,12 +14,12 @@ def generate_markdown_crawled_and_summarize(query, url, if_crawl: bool = False, 
     
     config = load_config()
     md = MarkItDown()
-    # md = MarkItDown(llm_client=Groq(api_key=config.get("groq_api_key")), llm_model=config.get("groq_model_name"))
+    # md = MarkItDown(llm_client=Groq(api_key=api_keys.groq_api_key), llm_model=config.get("groq_model_name"))
     result = md.convert(link)
     system_prompt = "You are a helpful AI assistant to summarize markdown text."
     prompt = f"Main prompt:{query}\nMarkdown Text:\n{str(result.text_content)}\n\nSummarize the text for research. Be  concise, write in bullete points if necessary. And, only wirte the most important information given the main prompt."
     response = groq_inference(
-        message=prompt, model=config.get("groq_model_name"), api_key=Groq(api_key=config.get("groq_api_key")), system_message=system_prompt)
+        message=prompt, model=config.get("groq_model_name"), api_key=Groq(api_key=api_keys.groq_api_key), system_message=system_prompt)
     results_.append({"link": link,
                     "content": result, "summary": response})
     results.append({"link": link, "summary": response})
@@ -40,7 +40,7 @@ def generate_markdown_crawled_and_summarize(query, url, if_crawl: bool = False, 
                 system_prompt = "You are a helpful AI assistant to summarize markdown text."
                 prompt = f"Main prompt:{query}\nMarkdown Text:\n{str(result.text_content)}\n\nSummarize the text for research. Be  concise, write in bullete points if necessary. And, only wirte the most important information given the main prompt."
                 response = groq_inference(
-                    message=prompt, model=config.get("groq_model_name"), api_key=Groq(api_key=config.get("groq_api_key")), system_message=system_prompt)
+                    message=prompt, model=config.get("groq_model_name"), api_key=Groq(api_key=api_keys.groq_api_key), system_message=system_prompt)
                 results_.append({"link": link, "root_link": url,
                                 "content": result, "summary": response})
                 results.append({"link": link, "root_link": url, "summary": response})
@@ -67,13 +67,13 @@ def generate_markdown_crawled_and_summarize(query, url, if_crawl: bool = False, 
 
 def generate_markdown_and_summarize(main_prompt, file_path, if_ingest: bool = False):
     config = load_config()
-    # md = MarkItDown(llm_client=Groq(api_key=config.get("groq_api_key")), llm_model=config.get("groq_model_name"))
+    # md = MarkItDown(llm_client=Groq(api_key=api_keys.groq_api_key), llm_model=config.get("groq_model_name"))
     md = MarkItDown()
     result = md.convert(file_path)
     system_prompt = "You are a helpful AI assistant to summarize markdown text."
     prompt = f"Main prompt:{main_prompt}\nMarkdown Text:\n{str(result.text_content)}\n\nSummarize the text for research. Be  concise, write in bullete points if necessary. And, only wirte the most important information given the main prompt."
     response = groq_inference(
-        message=prompt, model=config.get("groq_model_name"), api_key=Groq(api_key=config.get("groq_api_key")), system_message=system_prompt)
+        message=prompt, model=config.get("groq_model_name"), api_key=Groq(api_key=api_keys.groq_api_key), system_message=system_prompt)
     del md
     if if_ingest:
         pass

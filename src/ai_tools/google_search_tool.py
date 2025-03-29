@@ -217,7 +217,7 @@ def custom_deeper_google_research_agent(query, google_custom_search_api_key, goo
     # TODO add this to  backup memory
     
     response, model = groq_inference(
-            message=prompt_ds_, model=llm, api_key=llm_client_api_key, system_message=system_prompt, task_memory_messages=[])
+            message=prompt_ds_, api_key=llm_client_api_key, system_message=system_prompt, task_memory_messages=[])
     response_ds = {
         "query": query,
         "role": f"groq_assistant-{model}",
@@ -360,7 +360,7 @@ def embed_markdown_to_browser(markdown_string=markdown_response, browser='defaul
 """def test_google_custom_search():
     config = load_config()
     query = "what is the current temparature of Stuttgart?"
-    api_key = config.get("google_custom_search_api_key")
+    api_key = api_keys.google_custom_search_api_key
     custom_search_engine_id = config.get("google_custom_search_engine_id")
     items = google_custom_search(query=query, google_custom_search_api_key=api_key, google_custom_search_engine_id=custom_search_engine_id)
     pprint.pprint(items, indent=2)
@@ -375,14 +375,14 @@ def test_custom_deeper_google_research_agent():
     print("starting test")
     config = load_config()
     query = "What are the current states of quantum computing research in the world?"
-    api_key = config.get("google_custom_search_api_key")
+    api_key = api_keys.google_custom_search_api_key
     custom_search_engine_id = config.get("google_custom_search_engine_id")
     result = custom_deeper_google_research_agent(
         query=query,
         google_custom_search_api_key=api_key,
         google_custom_search_engine_id=custom_search_engine_id,
         llm=config.get("groq_model_name"),
-        llm_client_api_key=config.get("groq_api_key")
+        llm_client_api_key=api_keys.groq_api_key
         )
     print("ustom_deeper_google_research_agent response: ", str(result))
     del result

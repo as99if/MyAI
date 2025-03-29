@@ -1,3 +1,9 @@
+"""
+This module provides a method for performing inference using the Groq API with support for conversation memory and thinking steps.
+It selects the most recent llm by (or create using any llm by) Meta with larger context window.
+author: {Asif Ahmed}
+"""
+
 from asyncio.log import logger
 import json
 import os
@@ -5,24 +11,50 @@ from pathlib import Path
 import pprint
 from typing import Any
 from groq import Groq
-
 from src.utils.utils import load_config
+from src.config.config import api_keys
 
-def groq_inference(message: str, system_message: str, model: str, api_key: str, temperature: int = 0.8, max_completion_tokens: int = 2048, is_think_needed: bool = False, task_memory_messages: list[Any] = []) -> tuple[str, str]:
-    print("- requesting groq inference")
-    # client = Groq(api_key=api_key)
+def groq_inference(
+    message: str, 
+    system_message: str, 
+    api_key: str, 
+    temperature: int = 0.8, 
+    max_completion_tokens: int = 4096, 
+    is_think_needed: bool = True,
+    task_memory_messages: list[Any] = []
+) -> tuple[str, str]:
+    """
+    Performs inference using the Groq API with support for conversation memory and thinking steps.
     
+    Args:
+        message (str): The user's input message to process
+        system_message (str): The system prompt that defines the AI's behavior
+        api_key (str): Groq API authentication key
+        temperature (int, optional): Controls randomness in the response. Defaults to 0.8
+        max_completion_tokens (int, optional): Maximum tokens in the response. Defaults to 4096
+        is_think_needed (bool, optional): Whether to return thinking steps separately. Defaults to True
+        task_memory_messages (list, optional): Previous conversation history. Defaults to empty list. Caution - Personal data will go to Groq.
+    
+    Returns:
+        tuple[str, str]: A tuple containing:
+            - Either a string response or dict with 'think' and 'response' keys
+            - The model name used for completion
+    """
+    print("- requesting groq inference -")
+    
+    # Initialize the messages list with system prompt and initial assistant acknowledgment
     messages = [
                 {"role": "system", "content": system_message},
                 {"role": "assistant", "content": "Okay."},
             ]
-    # process task_memory_messages 
+
+    # Process conversation history if provided
     if len(task_memory_messages) > 0:  
         for mem_seg in task_memory_messages:
-            
             if mem_seg.role is "user":
                 messages.append({"role": "user", "content": mem_seg.content})
             elif mem_seg.role is not "assistant":
+                # Format non-assistant messages as structured memory segments
                 temp = {
                     "role": mem_seg.role,
                     "type": mem_seg.type, 
@@ -33,12 +65,21 @@ def groq_inference(message: str, system_message: str, model: str, api_key: str, 
             elif mem_seg.role is "assistant":
                 messages.append({"role": "assistant", "content": mem_seg.content})
     
+    # Add the current user message
     messages.append({"role": "user", "content": message})
-    
+        
+    # Initialize Groq client and perform inference
     with Groq(api_key=api_key) as client:
+        # Get available models and filter for Meta models with large context windows
+        models = client.models.list()
+        models = [model for model in models.data if "Meta" in model.owned_by and int(model.context_window) >= 32768]
+        models = sorted(models, key=lambda x: x.created, reverse=True)   
+        print(f"- Using model: {models[0].id} -")
+        
+        # Create chat completion request
         chat_completion = client.chat.completions.create(
-            messages=message,
-            model = model,
+            messages=messages,
+            model = models[0].id,
             temperature=temperature,
             max_completion_tokens=max_completion_tokens,
             top_p=0.95,
@@ -48,36 +89,36 @@ def groq_inference(message: str, system_message: str, model: str, api_key: str, 
 
         response_text = chat_completion.choices[0].message.content
     
+    # Clean up client
     if client:
         del client
-    # split "think" text chunk
+    
+    # Process response for thinking steps if present
     if '<think>' in response_text:
         think_content = response_text[response_text.find("<think>") + 7:response_text.find("</think>")].strip()
         rest_content = response_text[response_text.find("</think>") + 8:].strip()
-        # print("think texts: ", think_content)
-        # print("reply: ", rest_content)
+        
         if is_think_needed:
             response_text = {
                 "think": think_content,
                 "response" : rest_content
             }
-            return response_text, chat_completion.model,
+            return response_text, chat_completion.model
         else:
             return rest_content, chat_completion.model
     else:
         return response_text, chat_completion.model
 
-# test
-"""
 def test_groq_inference():
+    """
+    Test function for the groq_inference method.
+    Loads configuration, sets up a simple test case, and prints the response.
+    """
     config = load_config()
     system_message = "You are a helpful AI assistant. You do no write anything unnecessary, reply concise and short results."
     message = "count one to five"
+    
     model = config.get("groq_model_name")
-    api_key = config.get("groq_api_key")
-    response_text, chat_completion_model = groq_inference(message=message, model=model, api_key=api_key, system_message=system_message)
-    
-    
-    
-test_groq_inference()
-"""
+    api_key = api_keys.groq_api_key
+    response_text, chat_completion_model = groq_inference(message=message, api_key=api_key, system_message=system_message)
+    pprint.pprint(response_text)

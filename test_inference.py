@@ -2,7 +2,7 @@ import json
 import pprint
 from typing import List, Optional
 import time
-from src.core.clear_memory import clear_memory
+
 from src.inference_engine.inference_processor import InferenceEngine
 from src.memory_processor.conversation_history_engine import ConversationHistoryEngine
 
@@ -33,7 +33,7 @@ async def tests():
     conversation_history_engine = ConversationHistoryEngine(config)
     await conversation_history_engine.connect()
     await conversation_history_engine.delete_all()
-    sample_conversation_history_path = "/Users/asifahmed/Development/ProjectKITT/src/memory/test_conversation_history.json"
+    sample_conversation_history_path = "/Users/asifahmed/Development/MyAI/src/memory_processor/test_conversation_history.json"
     try:
         with open(sample_conversation_history_path, "r") as f:
             sample_conversation_history = json.load(f)
@@ -57,7 +57,7 @@ async def tests():
     end_time = time.time()
     print(f"took {end_time - start_time:.4f} seconds")
     
-    clear_memory()
+    # clear_memory()
 
 if __name__ == "__main__":
     import asyncio

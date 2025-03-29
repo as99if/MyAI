@@ -6,9 +6,7 @@ from datetime import datetime
 
 """
     
-    here, the _summarize_old_conversations method summarizes the first half of the history.. change it, so that it summarizes only the last two weeks of conversation from the timestamp in each conversation segment.
-
-this is an example of conversation history
+A separat service to summarise conversations on regular basis scheduled.
 """
 class ConversationSummarizer:
     def __init__(self, inference_engine, conversation_history_engine, app_config):

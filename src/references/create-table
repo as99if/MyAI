@@ -1,6 +1,0 @@
-CREATE EXTENSION vector;
-CREATE TABLE conversation_memory (
-    id SERIAL PRIMARY KEY,
-    text TEXT,
-    embedding vector(1536)  -- Match embedding dimension
-);
