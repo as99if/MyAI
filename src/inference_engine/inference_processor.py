@@ -173,7 +173,8 @@ class InferenceProcessor:
         if_tool_call: bool = False,
         tool_list: list = None,
         if_vision_inference: bool = False,
-    ) -> Any:
+        if_camera_feed: bool = False,
+    ) -> str:
         """
         Generate chat completion with context management.
 
@@ -241,7 +242,7 @@ class InferenceProcessor:
 
             response = await self.llm_inference_client.ainvoke(formatted_messages)
             print(response)
-
+            response = response["choices"][0]["message"]["content"]
             return response
 
         except Exception as e:

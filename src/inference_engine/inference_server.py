@@ -46,7 +46,7 @@ class InferenceServer:
         name = "computer-inference-server"
         """Start the FastAPI server before starting myAI"""
         
-        subprocess.run(["python", "-m", "llama_cpp.server", "--config_file", f"src/inference_engine/inference_server_config.json", "--port", "50001"])
+        subprocess.run(["python", "-m", "llama_cpp.server", "--config_file", f"src/inference_engine/inference_server_config.json", "--host", f"{host}", "--port", f"{port}"])
         # see llama_cpp/server/settings.py for more options to use multiple models
         
         
