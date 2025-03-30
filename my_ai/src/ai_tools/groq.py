@@ -11,7 +11,7 @@ from pathlib import Path
 import pprint
 from typing import Any
 from groq import Groq
-from src.utils.utils import load_config
+from my_ai.src.utils.my_ai_utils import load_config
 from src.config.config import api_keys
 
 def groq_inference(

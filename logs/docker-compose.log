@@ -1,0 +1,169 @@
+Starting redis-stack-server, database path /var/lib/redis-stack
+14:C 23 Feb 2025 11:29:57.355 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+14:C 23 Feb 2025 11:29:57.355 * Redis version=7.4.2, bits=64, commit=00000000, modified=0, pid=14, just started
+14:C 23 Feb 2025 11:29:57.355 * Configuration loaded
+14:M 23 Feb 2025 11:29:57.355 * monotonic clock: POSIX clock_gettime
+14:M 23 Feb 2025 11:29:57.355 * Running mode=standalone, port=6379.
+14:M 23 Feb 2025 11:29:57.356 * Module 'RedisCompat' loaded from /opt/redis-stack/lib/rediscompat.so
+14:M 23 Feb 2025 11:29:57.358 * <search> Redis version found by RedisSearch : 7.4.2 - oss
+14:M 23 Feb 2025 11:29:57.358 * <search> RediSearch version 2.10.12 (Git=2.10.12-6d25a0b)
+14:M 23 Feb 2025 11:29:57.358 * <search> Low level api version 1 initialized successfully
+14:M 23 Feb 2025 11:29:57.358 * <search> gc: ON, prefix min length: 2, min word length to stem: 4, prefix max expansions: 200, query timeout (ms): 500, timeout policy: return, cursor read size: 1000, cursor max idle (ms): 300000, max doctable size: 1000000, max number of search results:  10000, 
+14:M 23 Feb 2025 11:29:57.358 * <search> Initialized thread pools!
+14:M 23 Feb 2025 11:29:57.358 * <search> Enabled role change notification
+14:M 23 Feb 2025 11:29:57.358 * Module 'search' loaded from /opt/redis-stack/lib/redisearch.so
+14:M 23 Feb 2025 11:29:57.359 * <timeseries> RedisTimeSeries version 11205, git_sha=c0311e65891c3319e390370fe4d4532847c5b1e7
+14:M 23 Feb 2025 11:29:57.359 * <timeseries> Redis version found by RedisTimeSeries : 7.4.2 - oss
+14:M 23 Feb 2025 11:29:57.359 * <timeseries> loaded default CHUNK_SIZE_BYTES policy: 4096
+14:M 23 Feb 2025 11:29:57.359 * <timeseries> loaded server DUPLICATE_POLICY: block
+14:M 23 Feb 2025 11:29:57.359 * <timeseries> loaded default IGNORE_MAX_TIME_DIFF: 0
+14:M 23 Feb 2025 11:29:57.359 * <timeseries> loaded default IGNORE_MAX_VAL_DIFF: 0.000000
+14:M 23 Feb 2025 11:29:57.359 * <timeseries> Setting default series ENCODING to: compressed
+14:M 23 Feb 2025 11:29:57.360 * <timeseries> Detected redis oss
+14:M 23 Feb 2025 11:29:57.360 * Module 'timeseries' loaded from /opt/redis-stack/lib/redistimeseries.so
+14:M 23 Feb 2025 11:29:57.360 * <ReJSON> Created new data type 'ReJSON-RL'
+14:M 23 Feb 2025 11:29:57.360 # <ReJSON> Skip register defrag callbacks as defrag callbacks is not supported on the current Redis server.
+14:M 23 Feb 2025 11:29:57.360 * <ReJSON> version: 20808 git sha: unknown branch: unknown
+14:M 23 Feb 2025 11:29:57.360 * <ReJSON> Exported RedisJSON_V1 API
+14:M 23 Feb 2025 11:29:57.360 * <ReJSON> Exported RedisJSON_V2 API
+14:M 23 Feb 2025 11:29:57.360 * <ReJSON> Exported RedisJSON_V3 API
+14:M 23 Feb 2025 11:29:57.360 * <ReJSON> Exported RedisJSON_V4 API
+14:M 23 Feb 2025 11:29:57.360 * <ReJSON> Exported RedisJSON_V5 API
+14:M 23 Feb 2025 11:29:57.360 * <ReJSON> Enabled diskless replication
+14:M 23 Feb 2025 11:29:57.360 * <ReJSON> Initialized shared string cache, thread safe: false.
+14:M 23 Feb 2025 11:29:57.360 * Module 'ReJSON' loaded from /opt/redis-stack/lib/rejson.so
+14:M 23 Feb 2025 11:29:57.360 * <search> Acquired RedisJSON_V5 API
+14:M 23 Feb 2025 11:29:57.361 * <bf> RedisBloom version 2.8.5 (Git=unknown)
+14:M 23 Feb 2025 11:29:57.361 * Module 'bf' loaded from /opt/redis-stack/lib/redisbloom.so
+14:M 23 Feb 2025 11:29:57.361 * <redisgears_2> Created new data type 'GearsType'
+14:M 23 Feb 2025 11:29:57.362 * <redisgears_2> Detected redis oss
+14:M 23 Feb 2025 11:29:57.362 # <redisgears_2> could not initialize RedisAI_InitError
+
+14:M 23 Feb 2025 11:29:57.362 * <redisgears_2> Failed loading RedisAI API.
+14:M 23 Feb 2025 11:29:57.362 * <redisgears_2> RedisGears v2.0.20, sha='9b737886bf825fe29ddc2f8da81f73cbe0b4e858', build_type='release', built_for='Linux-ubuntu22.04.aarch64', redis_version:'7.4.2', enterprise:'false'.
+14:M 23 Feb 2025 11:29:57.363 * <redisgears_2> Registered backend: js.
+14:M 23 Feb 2025 11:29:57.364 * Module 'redisgears_2' loaded from /opt/redis-stack/lib/redisgears.so
+14:M 23 Feb 2025 11:29:57.368 * Server initialized
+14:M 23 Feb 2025 11:29:57.371 * Creating AOF base file appendonly.aof.1.base.rdb on server start
+14:M 23 Feb 2025 11:29:57.372 * Creating AOF incr file appendonly.aof.1.incr.aof on server start
+14:M 23 Feb 2025 11:29:57.372 * Ready to accept connections tcp
+Starting redis-stack-server, database path /var/lib/redis-stack
+14:C 23 Feb 2025 11:57:27.482 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+14:C 23 Feb 2025 11:57:27.482 * Redis version=7.4.2, bits=64, commit=00000000, modified=0, pid=14, just started
+14:C 23 Feb 2025 11:57:27.482 * Configuration loaded
+14:M 23 Feb 2025 11:57:27.483 * monotonic clock: POSIX clock_gettime
+14:M 23 Feb 2025 11:57:27.485 * Running mode=standalone, port=6379.
+14:M 23 Feb 2025 11:57:27.490 * Module 'RedisCompat' loaded from /opt/redis-stack/lib/rediscompat.so
+14:M 23 Feb 2025 11:57:27.513 * <search> Redis version found by RedisSearch : 7.4.2 - oss
+14:M 23 Feb 2025 11:57:27.513 * <search> RediSearch version 2.10.12 (Git=2.10.12-6d25a0b)
+14:M 23 Feb 2025 11:57:27.513 * <search> Low level api version 1 initialized successfully
+14:M 23 Feb 2025 11:57:27.514 * <search> gc: ON, prefix min length: 2, min word length to stem: 4, prefix max expansions: 200, query timeout (ms): 500, timeout policy: return, cursor read size: 1000, cursor max idle (ms): 300000, max doctable size: 1000000, max number of search results:  10000, 
+14:M 23 Feb 2025 11:57:27.514 * <search> Initialized thread pools!
+14:M 23 Feb 2025 11:57:27.515 * <search> Enabled role change notification
+14:M 23 Feb 2025 11:57:27.515 * Module 'search' loaded from /opt/redis-stack/lib/redisearch.so
+14:M 23 Feb 2025 11:57:27.526 * <timeseries> RedisTimeSeries version 11205, git_sha=c0311e65891c3319e390370fe4d4532847c5b1e7
+14:M 23 Feb 2025 11:57:27.526 * <timeseries> Redis version found by RedisTimeSeries : 7.4.2 - oss
+14:M 23 Feb 2025 11:57:27.526 * <timeseries> loaded default CHUNK_SIZE_BYTES policy: 4096
+14:M 23 Feb 2025 11:57:27.526 * <timeseries> loaded server DUPLICATE_POLICY: block
+14:M 23 Feb 2025 11:57:27.526 * <timeseries> loaded default IGNORE_MAX_TIME_DIFF: 0
+14:M 23 Feb 2025 11:57:27.526 * <timeseries> loaded default IGNORE_MAX_VAL_DIFF: 0.000000
+14:M 23 Feb 2025 11:57:27.526 * <timeseries> Setting default series ENCODING to: compressed
+14:M 23 Feb 2025 11:57:27.526 * <timeseries> Detected redis oss
+14:M 23 Feb 2025 11:57:27.527 * Module 'timeseries' loaded from /opt/redis-stack/lib/redistimeseries.so
+14:M 23 Feb 2025 11:57:27.536 * <ReJSON> Created new data type 'ReJSON-RL'
+14:M 23 Feb 2025 11:57:27.536 # <ReJSON> Skip register defrag callbacks as defrag callbacks is not supported on the current Redis server.
+14:M 23 Feb 2025 11:57:27.538 * <ReJSON> version: 20808 git sha: unknown branch: unknown
+14:M 23 Feb 2025 11:57:27.538 * <ReJSON> Exported RedisJSON_V1 API
+14:M 23 Feb 2025 11:57:27.538 * <ReJSON> Exported RedisJSON_V2 API
+14:M 23 Feb 2025 11:57:27.538 * <ReJSON> Exported RedisJSON_V3 API
+14:M 23 Feb 2025 11:57:27.538 * <ReJSON> Exported RedisJSON_V4 API
+14:M 23 Feb 2025 11:57:27.538 * <ReJSON> Exported RedisJSON_V5 API
+14:M 23 Feb 2025 11:57:27.538 * <ReJSON> Enabled diskless replication
+14:M 23 Feb 2025 11:57:27.538 * <ReJSON> Initialized shared string cache, thread safe: false.
+14:M 23 Feb 2025 11:57:27.538 * Module 'ReJSON' loaded from /opt/redis-stack/lib/rejson.so
+14:M 23 Feb 2025 11:57:27.538 * <search> Acquired RedisJSON_V5 API
+14:M 23 Feb 2025 11:57:27.539 * <bf> RedisBloom version 2.8.5 (Git=unknown)
+14:M 23 Feb 2025 11:57:27.539 * Module 'bf' loaded from /opt/redis-stack/lib/redisbloom.so
+14:M 23 Feb 2025 11:57:27.544 * <redisgears_2> Created new data type 'GearsType'
+14:M 23 Feb 2025 11:57:27.545 * <redisgears_2> Detected redis oss
+14:M 23 Feb 2025 11:57:27.546 # <redisgears_2> could not initialize RedisAI_InitError
+
+14:M 23 Feb 2025 11:57:27.546 * <redisgears_2> Failed loading RedisAI API.
+14:M 23 Feb 2025 11:57:27.546 * <redisgears_2> RedisGears v2.0.20, sha='9b737886bf825fe29ddc2f8da81f73cbe0b4e858', build_type='release', built_for='Linux-ubuntu22.04.aarch64', redis_version:'7.4.2', enterprise:'false'.
+14:M 23 Feb 2025 11:57:27.554 * <redisgears_2> Registered backend: js.
+14:M 23 Feb 2025 11:57:27.558 * Module 'redisgears_2' loaded from /opt/redis-stack/lib/redisgears.so
+14:M 23 Feb 2025 11:57:27.558 * Server initialized
+14:M 23 Feb 2025 11:57:27.559 * <search> Loading event starts
+14:M 23 Feb 2025 11:57:27.559 * <redisgears_2> Got a loading start event, clear the entire functions data.
+14:M 23 Feb 2025 11:57:27.560 * Reading RDB base file on AOF loading...
+14:M 23 Feb 2025 11:57:27.560 * Loading RDB produced by version 7.4.2
+14:M 23 Feb 2025 11:57:27.560 * RDB age 1650 seconds
+14:M 23 Feb 2025 11:57:27.560 * RDB memory usage when created 1.30 Mb
+14:M 23 Feb 2025 11:57:27.560 * RDB is base AOF
+14:M 23 Feb 2025 11:57:27.560 * Done loading RDB, keys loaded: 0, keys expired: 0.
+14:M 23 Feb 2025 11:57:27.560 * DB loaded from base file appendonly.aof.1.base.rdb: 0.000 seconds
+14:M 23 Feb 2025 11:57:27.560 * <search> Loading event ends
+14:M 23 Feb 2025 11:57:27.560 * <redisgears_2> Loading finished, re-enable key space notificaitons.
+14:M 23 Feb 2025 11:57:27.560 * DB loaded from append only file: 0.001 seconds
+14:M 23 Feb 2025 11:57:27.560 * Opening AOF incr file appendonly.aof.1.incr.aof on server start
+14:M 23 Feb 2025 11:57:27.560 * Ready to accept connections tcp
+Starting redis-stack-server, database path /var/lib/redis-stack
+14:C 30 Mar 2025 16:45:52.397 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+14:C 30 Mar 2025 16:45:52.397 * Redis version=7.4.2, bits=64, commit=00000000, modified=0, pid=14, just started
+14:C 30 Mar 2025 16:45:52.397 * Configuration loaded
+14:M 30 Mar 2025 16:45:52.399 * monotonic clock: POSIX clock_gettime
+14:M 30 Mar 2025 16:45:52.403 * Running mode=standalone, port=6379.
+14:M 30 Mar 2025 16:45:52.408 * Module 'RedisCompat' loaded from /opt/redis-stack/lib/rediscompat.so
+14:M 30 Mar 2025 16:45:52.439 * <search> Redis version found by RedisSearch : 7.4.2 - oss
+14:M 30 Mar 2025 16:45:52.440 * <search> RediSearch version 2.10.12 (Git=2.10.12-6d25a0b)
+14:M 30 Mar 2025 16:45:52.440 * <search> Low level api version 1 initialized successfully
+14:M 30 Mar 2025 16:45:52.441 * <search> gc: ON, prefix min length: 2, min word length to stem: 4, prefix max expansions: 200, query timeout (ms): 500, timeout policy: return, cursor read size: 1000, cursor max idle (ms): 300000, max doctable size: 1000000, max number of search results:  10000, 
+14:M 30 Mar 2025 16:45:52.442 * <search> Initialized thread pools!
+14:M 30 Mar 2025 16:45:52.443 * <search> Enabled role change notification
+14:M 30 Mar 2025 16:45:52.443 * Module 'search' loaded from /opt/redis-stack/lib/redisearch.so
+14:M 30 Mar 2025 16:45:52.455 * <timeseries> RedisTimeSeries version 11205, git_sha=c0311e65891c3319e390370fe4d4532847c5b1e7
+14:M 30 Mar 2025 16:45:52.455 * <timeseries> Redis version found by RedisTimeSeries : 7.4.2 - oss
+14:M 30 Mar 2025 16:45:52.455 * <timeseries> loaded default CHUNK_SIZE_BYTES policy: 4096
+14:M 30 Mar 2025 16:45:52.455 * <timeseries> loaded server DUPLICATE_POLICY: block
+14:M 30 Mar 2025 16:45:52.455 * <timeseries> loaded default IGNORE_MAX_TIME_DIFF: 0
+14:M 30 Mar 2025 16:45:52.455 * <timeseries> loaded default IGNORE_MAX_VAL_DIFF: 0.000000
+14:M 30 Mar 2025 16:45:52.455 * <timeseries> Setting default series ENCODING to: compressed
+14:M 30 Mar 2025 16:45:52.455 * <timeseries> Detected redis oss
+14:M 30 Mar 2025 16:45:52.457 * Module 'timeseries' loaded from /opt/redis-stack/lib/redistimeseries.so
+14:M 30 Mar 2025 16:45:52.472 * <ReJSON> Created new data type 'ReJSON-RL'
+14:M 30 Mar 2025 16:45:52.472 # <ReJSON> Skip register defrag callbacks as defrag callbacks is not supported on the current Redis server.
+14:M 30 Mar 2025 16:45:52.474 * <ReJSON> version: 20808 git sha: unknown branch: unknown
+14:M 30 Mar 2025 16:45:52.474 * <ReJSON> Exported RedisJSON_V1 API
+14:M 30 Mar 2025 16:45:52.474 * <ReJSON> Exported RedisJSON_V2 API
+14:M 30 Mar 2025 16:45:52.474 * <ReJSON> Exported RedisJSON_V3 API
+14:M 30 Mar 2025 16:45:52.474 * <ReJSON> Exported RedisJSON_V4 API
+14:M 30 Mar 2025 16:45:52.474 * <ReJSON> Exported RedisJSON_V5 API
+14:M 30 Mar 2025 16:45:52.474 * <ReJSON> Enabled diskless replication
+14:M 30 Mar 2025 16:45:52.474 * <ReJSON> Initialized shared string cache, thread safe: false.
+14:M 30 Mar 2025 16:45:52.474 * Module 'ReJSON' loaded from /opt/redis-stack/lib/rejson.so
+14:M 30 Mar 2025 16:45:52.474 * <search> Acquired RedisJSON_V5 API
+14:M 30 Mar 2025 16:45:52.477 * <bf> RedisBloom version 2.8.5 (Git=unknown)
+14:M 30 Mar 2025 16:45:52.477 * Module 'bf' loaded from /opt/redis-stack/lib/redisbloom.so
+14:M 30 Mar 2025 16:45:52.487 * <redisgears_2> Created new data type 'GearsType'
+14:M 30 Mar 2025 16:45:52.489 * <redisgears_2> Detected redis oss
+14:M 30 Mar 2025 16:45:52.490 # <redisgears_2> could not initialize RedisAI_InitError
+
+14:M 30 Mar 2025 16:45:52.490 * <redisgears_2> Failed loading RedisAI API.
+14:M 30 Mar 2025 16:45:52.490 * <redisgears_2> RedisGears v2.0.20, sha='9b737886bf825fe29ddc2f8da81f73cbe0b4e858', build_type='release', built_for='Linux-ubuntu22.04.aarch64', redis_version:'7.4.2', enterprise:'false'.
+14:M 30 Mar 2025 16:45:52.504 * <redisgears_2> Registered backend: js.
+14:M 30 Mar 2025 16:45:52.513 * Module 'redisgears_2' loaded from /opt/redis-stack/lib/redisgears.so
+14:M 30 Mar 2025 16:45:52.513 * Server initialized
+14:M 30 Mar 2025 16:45:52.514 * <search> Loading event starts
+14:M 30 Mar 2025 16:45:52.514 * <redisgears_2> Got a loading start event, clear the entire functions data.
+14:M 30 Mar 2025 16:45:52.515 * Reading RDB base file on AOF loading...
+14:M 30 Mar 2025 16:45:52.515 * Loading RDB produced by version 7.4.2
+14:M 30 Mar 2025 16:45:52.515 * RDB age 3042955 seconds
+14:M 30 Mar 2025 16:45:52.515 * RDB memory usage when created 1.30 Mb
+14:M 30 Mar 2025 16:45:52.515 * RDB is base AOF
+14:M 30 Mar 2025 16:45:52.515 * Done loading RDB, keys loaded: 0, keys expired: 0.
+14:M 30 Mar 2025 16:45:52.515 * DB loaded from base file appendonly.aof.1.base.rdb: 0.001 seconds
+14:M 30 Mar 2025 16:45:52.515 * <search> Loading event ends
+14:M 30 Mar 2025 16:45:52.515 * <redisgears_2> Loading finished, re-enable key space notificaitons.
+14:M 30 Mar 2025 16:45:52.515 * DB loaded from append only file: 0.001 seconds
+14:M 30 Mar 2025 16:45:52.515 * Opening AOF incr file appendonly.aof.1.incr.aof on server start
+14:M 30 Mar 2025 16:45:52.515 * Ready to accept connections tcp

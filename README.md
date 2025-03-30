@@ -1,18 +1,8 @@
-# python flet or smth. to create flutter app
-# vision processing in client flutter app for iphone and macos
-# rest api form vision-indeference with my_ai postprocess
 
-https://pypi.org/project/instructor/
-
-https://code.iaflw.com/2025/02/grounding-results-with-google-search.html
-
-
-https://github.com/AK391/llama-3.2-3b-voice/tree/main
-https://github.com/AK391/ollama-gradio
-https://github.com/AK391/moshi
 MyAI
 
-Lightweight local AI voice assistant with functionalities, targetted for edge devices.
+Lightweight local AI voice assistant with multiple functionalities, targetted for edge devices or macos.
+Omni like software (eh?) - but with multiple LLM/VLM, ASR, TTS and Object detection models, with long term and short term memory etc.
 
 Used stack:
 - llama.cpp (llama-cpp-python) server
@@ -29,7 +19,7 @@ brew install ffmpeg
 pip install --upgrade pip
 pip install -r requrements.txt
 make db-run  # for redis dbs
-python -m src.inference_engine.inference_server # has both, text and multimodal model
+python -m inference_server.serve # has both, text and multimodal model
 # python -m main # in another terminal, or run inference server as daemon
 python flet run src/ui/my_ai_ui.py # flutter app
 brew install mactop
@@ -52,13 +42,36 @@ CMAKE_ARGS="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS -DGGML_METAL=on" \
 ```
 
 
+#### Run server in docker compose
+```shell
+chmod +x run_docker_compose_with_logs.sh
+./run_docker_compose_with_logs.sh
+```
+
+docker-compose build
+docker-compose up
+docker-compose logs -f
+docker-compose down
+docker-compose ps
+
+
+# python flet or smth. to create flutter app
+# vision processing in client flutter app for iphone and macos
+# rest api form vision-indeference with my_ai postprocess
+
+https://pypi.org/project/instructor/
+
+https://code.iaflw.com/2025/02/grounding-results-with-google-search.html
+
+
+https://github.com/AK391/llama-3.2-3b-voice/tree/main
+https://github.com/AK391/ollama-gradio
+https://github.com/AK391/moshi
+
+
 ---
 replace google (if good)
-https://github.com/jina-ai/node-serp
-
-replace deepseek gguf and extra vlm engine with phi4 multimodal
-https://techcommunity.microsoft.com/blog/educatordeveloperblog/welcome-to-the-new-phi-4-models---microsoft-phi-4-mini--phi-4-multimodal/4386037
-
+https://github.com/jina-ai/node-serp - not good
 
 google cloud console api's (asif.drmc21 - project Gemini API)
 (https://console.cloud.google.com/google/maps-apis/api-list?inv=1&invt=AboExg&project=gen-lang-client-0930623728)

@@ -13,7 +13,7 @@ import random
 from src.ai_tools.groq import groq_inference
 from src.ai_tools.ms_markitdown import generate_markdown_crawled_and_summarize
 from src.core.core_utils import display_notification_with_button
-from src.utils.utils import load_config, split_list
+from my_ai.src.utils.my_ai_utils import load_config, split_list
 from urllib.parse import urlencode
 import tracemalloc
 

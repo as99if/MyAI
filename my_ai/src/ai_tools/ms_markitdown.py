@@ -4,7 +4,7 @@ from markitdown import MarkItDown
 import requests
 
 from src.ai_tools.groq import groq_inference
-from src.utils.utils import load_config
+from my_ai.src.utils.my_ai_utils import load_config
 from src.config.config import api_keys
 
 def generate_markdown_crawled_and_summarize(query, url, if_crawl: bool = False, if_ingest: bool = False):

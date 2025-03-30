@@ -10,7 +10,7 @@ from typing import Any
 import urllib.parse
 
 import webbrowser
-from src.utils.utils import load_config
+from my_ai.src.utils.my_ai_utils import load_config
 import googlemaps
 from datetime import datetime
 from src.config.config import api_keys

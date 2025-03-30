@@ -5,23 +5,17 @@ depreceted - this file is not used anymore
 
 """
 
-import argparse
-import asyncio
-import multiprocessing
 import subprocess
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Union, Dict, Any
-import uvicorn
-from llama_cpp import Llama
 
-from src.utils.utils import load_config
+from llama_cpp import Llama
 
 
 class InferenceServer:
     def __init__(self):
-        self.config = load_config()
         
         # for starting server from main of MyAI as a daemon
         # self.server_run = multiprocessing.Process(
@@ -31,6 +25,7 @@ class InferenceServer:
         # )
         # self.server_run.start()
         # self.server_run.join()
+        pass
 
     def _initialize_llm_server(self):
         # for starting server from main of MyAI
@@ -46,7 +41,7 @@ class InferenceServer:
         name = "computer-inference-server"
         """Start the FastAPI server before starting myAI"""
         
-        subprocess.run(["python", "-m", "llama_cpp.server", "--config_file", f"src/inference_engine/inference_server_config.json", "--host", f"{host}", "--port", f"{port}"])
+        subprocess.run(["python", "-m", "llama_cpp.server", "--config_file", f"inference_server/inference_server_config.json", "--host", f"{host}", "--port", f"{port}"])
         # see llama_cpp/server/settings.py for more options to use multiple models
         
         

@@ -6,25 +6,23 @@
     "root_path": "",
     "models": [
         {
-            "model": "/Users/asifahmed/Development/MyAI/models/llm/gemma-3-1b/gemma-3-1b-it-BF16.gguf",
+            "model": "/Users/asifahmed/Development/MyAI/inference_server/models/llm/gemma-3-1b/gemma-3-1b-it-BF16.gguf",
             "model_alias": "gemma-3-1b",
-            "chat_format": "gemma",
             "n_gpu_layers": -1,
-            "n_threads": 12,
-            "n_batch": 512,
+            "n_threads": 4,
+            "n_batch": 256,
             "n_ctx": 8192,
             "offload_kqv": true,
             "use_mmap": true,
             "embedding": true,
             "cache": true,
             "cache_type": "ram",
-            "hf_tokenizer_config_path": "models/llm/gemma-3-1b/tokenizer_config.json"
+            "hf_tokenizer_config_path": "/Users/asifahmed/Development/MyAI/inference_server/models/llm/gemma-3-1b/tokenizer_config.json"
         },
         {
-            "model": "/Users/asifahmed/Development/MyAI/models/vlm/gemma-3-4b/gemma-3-4b-it-BF16.gguf",
+            "model": "/Users/asifahmed/Development/MyAI/inference_server/models/vlm/gemma-3-4b/gemma-3-4b-it-BF16.gguf",
             "model_alias": "gemma-3-4b-multimodal",
-            "clip_model_path": "models/vlm/gemma-3-4b/mmproj-BF16.gguf",
-            "chat_format": "gemma",
+            "clip_model_path": "/Users/asifahmed/Development/MyAI/models/vlm/gemma-3-4b/mmproj-BF16.gguf",
             "n_gpu_layers": -1,
             "n_threads": 12,
             "n_batch": 256,
@@ -33,7 +31,7 @@
             "embedding": false,
             "cache": false,
             "cache_type": "disk",
-            "hf_tokenizer_config_path": "/Users/asifahmed/Development/MyAI/models/vlm/gemma-3-4b/tokenizer_config.json"
+            "hf_tokenizer_config_path": "inference_server/models/vlm/gemma-3-4b/tokenizer_config.json"
         }
     ]
 }

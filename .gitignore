@@ -5,8 +5,6 @@
 .venv/
 venv/
 .env
-src/inference_engine/llm/
-src/speech_engine/models/
 **/models/llm/**
 **/models/vlm/**
 **/models/speech/**
@@ -15,3 +13,5 @@ src/speech_engine/models/
 **/.idea
 **/.gradio
 **/.cache
+**/.pytest_cache
+**/__pycache__

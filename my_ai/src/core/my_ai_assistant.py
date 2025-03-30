@@ -31,7 +31,7 @@ from typing import Any, List, Tuple, Optional
 from src.inference_engine.inference_processor import InferenceProcessor
 from src.memory_processor.conversation_history_engine import ConversationHistoryEngine
 from src.speech_engine.speech_engine import SpeechEngine
-from src.utils.utils import load_config
+from my_ai.src.utils.my_ai_utils import load_config
 from src.core.api_server.data_models import ContentSegment, MessageContent
 
 

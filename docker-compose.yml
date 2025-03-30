@@ -1,0 +1,60 @@
+services:
+  inference-server:
+    build: 
+      context: inference_server/.
+      dockerfile: Dockerfile.inference_server
+    container_name: my-ai-inference-server
+    ports:
+      - "50001:50001"
+    volumes:
+      - .inference_server/models:/app/models
+      - .inference_server/inference_server_config.json:/app/inference_server_config.json
+    environment:
+      - MODEL_PATH=/app/models/llm/gemma-3-1b/gemma-3-1b-it-BF16.gguf
+      - CONFIG_PATH=/app/inference_server_config.json
+      - PYTHONUNBUFFERED=1
+    deploy:
+      resources:
+        limits:
+          memory: 12G
+          cpus: '4'
+        reservations:
+          memory: 4G
+    # healthcheck:
+    #  test: ["CMD", "curl", "-f", "http://localhost:50001/health"]
+    #  interval: 30s
+    #  timeout: 10s
+    #  retries: 3
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  
+  # redis-server:
+  #   image: redis/redis-stack:latest
+  #   container_name: redis-json
+  #   ports:
+  #     - "6379:6379"      # Redis port
+  #     - "8001:8001"      # RedisInsight web interface
+  #   volumes:
+  #     - redis_data:/data
+  #   command: redis-stack-server --appendonly yes --appendfsync everysec
+  #   #    networks:
+  #   #  - myai-network
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 3
+
+volumes:
+  redis_data:
+    driver: local
+
+# docker rm -f $(docker ps -aq)
+# docker rmi $(docker images -q) -f
+# docker builder prune -af
+

@@ -22,7 +22,7 @@ from src.ai_tools.groq import groq_inference
 from src.ai_tools.siri_service import execute_siri_command
 import requests
 from langchain.schema import HumanMessage, SystemMessage, AIMessage
-from src.utils.utils import load_config, load_prompt
+from my_ai.src.utils.my_ai_utils import load_config, load_prompt
 from langchain_core.tools import Tool
 from langchain.agents import (
     AgentType,

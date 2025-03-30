@@ -33,7 +33,7 @@ import logging
 from typing import Dict, List, Optional, Any
 import asyncio
 
-from src.utils.utils import load_config
+from my_ai.src.utils.my_ai_utils import load_config
 
 
 class ConversationHistoryEngine:
