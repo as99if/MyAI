@@ -18,6 +18,7 @@ from langchain_openai import ChatOpenAI
 from pydantic import BaseModel
 import aiohttp
 import logging
+from my_ai.src.core.api_server.data_models import MessageContent
 from src.ai_tools.groq import groq_inference
 from src.ai_tools.siri_service import execute_siri_command
 import requests
@@ -30,21 +31,6 @@ from langchain.agents import (
     create_openai_tools_agent,
     AgentExecutor,
 )
-
-
-class ChatMessage(BaseModel):
-    """
-    Represents a single chat message with metadata.
-
-    Attributes:
-        role (str): Message sender role (user/assistant/system)
-        content (str): The message content
-        type (str): Message type identifier
-    """
-
-    role: str
-    content: str
-    type: str
 
 
 class InferenceProcessor:
@@ -82,7 +68,7 @@ class InferenceProcessor:
         # Standard LLM client initialization with optimized parameters
         self.llm_inference_client = ChatOpenAI(
             base_url=self.config.get("base_url", "http://localhost:50001"),
-            model_name=self.config.get("llm", "gemma-3-1b-it-GGUF"),
+            model_name=self.config.get("llm", "gemma-3-1b"),
             streaming=False,
             api_key="None",
             stop_sequences=["<end_of_turn>", "<eos>"],
@@ -97,15 +83,16 @@ class InferenceProcessor:
         # Vision model client initialization
         self.vlm_inference_client = ChatOpenAI(
             base_url=self.config.get("base_url", "http://localhost:50001"),
-            model_name=self.config.get("vlm", "gemma-3-4b-it-GGUF"),
+            model_name=self.config.get("vlm"),
             streaming=False,
             api_key="None",
             stop_sequences=["<end_of_turn>", "<eos>"],
             temperature=1.0,
             # repeat_penalty=1.0,
-            # top_k=64,
+            top_k=64,
             top_p=0.95,
-            n=2,
+            min_p=0.01,
+            n=8,
             max_completion_tokens=1024,
         )
 
@@ -174,7 +161,7 @@ class InferenceProcessor:
         tool_list: list = None,
         if_vision_inference: bool = False,
         if_camera_feed: bool = False,
-    ) -> str:
+    ) -> MessageContent:
         """
         Generate chat completion with context management.
 
@@ -186,7 +173,7 @@ class InferenceProcessor:
             if_vision_inference (bool): Whether to use vision model
 
         Returns:
-            Any: Model response, format depends on completion type
+            MessageContent: Response message
 
         Raises:
             Exception: If chat completion fails
@@ -224,6 +211,7 @@ class InferenceProcessor:
                 return response
 
             if if_tool_call:  # trun on with bool / button / checkbox in gui
+                
                 if command:
                     self._initialize_agent()
                     # Run the agent
@@ -243,10 +231,23 @@ class InferenceProcessor:
             response = await self.llm_inference_client.ainvoke(formatted_messages)
             print(response)
             response = response["choices"][0]["message"]["content"]
+            metadata = {}  # metaata from response
+            MessageContent(
+                role="assistant",
+                timestamp=datetime.now().isoformat(),
+                content=response,
+                metadata=metadata
+            )
+            # make it MessageContent
             return response
 
         except Exception as e:
-            raise Exception(f"Error during chat completion: {e}")
+            #raise Exception(f"Error during chat completion: {e}")
+            return MessageContent(
+                role="assistant",
+                timestamp=datetime.now().isoformat(),
+                content="LLM Server Not Running"
+            )
 
 
 """

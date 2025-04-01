@@ -2,7 +2,7 @@ from asyncio.log import logger
 import json
 from pathlib import Path
     
-def load_prompt(path: str = "src/prompts/system_prompts.json"):
+def load_prompt(path: str = "src/config/prompts/system_prompts.json"):
     prompt_path = Path(path)
     try:
         with open(prompt_path, "r") as f:

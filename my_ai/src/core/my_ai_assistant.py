@@ -20,6 +20,7 @@ import io
 import keyboard  # Add this import
 import gc
 import threading
+from my_ai.src.core.schemas import SelfReflectionSchema, ToolCallResponseSchema
 import simpleaudio
 import time
 import signal
@@ -335,105 +336,190 @@ class MyAIAssistant:
         Returns:
             MessageContent: The processed message content
         """
+        # Initialize response and handle camera feed
         response: MessageContent = None
         if if_camera_feed:
             is_vision_enabled = True
 
+        # Set message type
         message.type = "user_message"
         
+        # Initialize conversation history either from mock or empty list
         recent_conversation = self.mock_conversation_history if not self.conversation_history_engine else []
         
+        # Create reminder (hidden) messages for thinking process
+        unspoken_think_prompt = MessageContent(
+            role = "user",
+            timestamp = datetime.now().isoformat(),
+            content = self.system_prompts["available_tools_prompt"] + self.system_prompts["think_prompt"],
+            type = "unspoken"
+        )
+        unspoken_affirmation = MessageContent(
+            role = "assistant",
+            timestamp = datetime.now().isoformat(),
+            content = self.system_prompts["casual_okay_response"][0], # make random from list
+            type = "unspoken"
+        )
+        
+        # Handle conversation history if engine exists
         if self.conversation_history_engine:
             try:
-                recent_conversation = (
-                    await self.conversation_history_engine.get_recent_conversation()
-                )
+                recent_conversation = await self.conversation_history_engine.get_recent_conversation()
                 if len(recent_conversation) > 0:
-                    recent_conversation = recent_conversation + message
-
-                await self.conversation_history_engine.add_conversation([message])
+                    # Add system messages and user message to conversation
+                    recent_conversation = recent_conversation + unspoken_think_prompt + unspoken_affirmation + message
+                # Add user message to history
+                await self.conversation_history_engine.add_conversation([unspoken_think_prompt, unspoken_affirmation, message])
             except Exception as e:
-                print(f"Error getting recent conversation: {e}")
+                print(f"Error processing recent conversation: {e}")
                 raise e
         else:
-            recent_conversation = message
-
-        _response = await self.inference_processor.create_chat_completion(
+            # If no history engine, use local conversation
+            recent_conversation = recent_conversation + unspoken_think_prompt + unspoken_affirmation + message
+        
+        # Generate initial AI response with self-reflection
+        response = await self.inference_processor.create_chat_completion(
             messages=recent_conversation,
             if_vision_inference=is_vision_enabled,
             if_camera_feed=if_camera_feed,
+            schame=SelfReflectionSchema,
+            if_tool_call=False
         )
-
-        response = MessageContent(
-            role="assistant",
-            message=_response,
-            timestamp=datetime.now().isoformat(),
-            type="computer_response",
-        )
-
+        response.type="unspoken",
+        
+        # Add AI response to conversation history
         if self.conversation_history_engine:
-            await self.conversation_history_engine.add_conversation([response])
+            try:
+                await self.conversation_history_engine.add_conversation([response])
+            except Exception as e:
+                print(f"Error processing recent conversation: {e}")
+                raise e
+        recent_conversation = recent_conversation + response    
+          
+        # Handle tool calls if necessary
+        try:
+            if _response.tool_call_necessary:
+                # Create and add tool call prompt
+                tool_call_prompt = MessageContent(
+                    role="user",
+                    content=self.system_prompts["tool_call_prompt"],
+                    timestamp=datetime.now().isoformat(),
+                    type="unspoken",
+                )
+                if self.conversation_history_engine:
+                    try:
+                        await self.conversation_history_engine.add_conversation([tool_call_prompt])
+                    except Exception as e:
+                        print(f"Error processing recent conversation: {e}")
+                        raise e
+                recent_conversation = recent_conversation + tool_call_prompt + _response.command_for_tool_call
 
-        # respond
+                # Generate response with tool call
+                response = await self.inference_processor.create_chat_completion(
+                    messages=recent_conversation,
+                    if_vision_inference=is_vision_enabled,
+                    if_camera_feed=if_camera_feed,
+                    schame=ToolCallResponseSchema,
+                    if_tool_call=True
+                )
+            else:
+                # Handle non-tool call response
+                proceed_after_thinking_without_tool = MessageContent(
+                    role="user",
+                    content=self.system_prompts["proceed_after_thinking_without_tool"],
+                    timestamp=datetime.now().isoformat(),
+                    type="unspoken",
+                )
+                if self.conversation_history_engine:
+                    try:
+                        await self.conversation_history_engine.add_conversation([proceed_after_thinking_without_tool])
+                    except Exception as e:
+                        print(f"Error processing recent conversation: {e}")
+                        raise e
+                recent_conversation = recent_conversation + proceed_after_thinking_without_tool
+                
+                response = await self.inference_processor.create_chat_completion(
+                    messages=recent_conversation,
+                    if_vision_inference=is_vision_enabled,
+                    if_camera_feed=if_camera_feed,
+                    if_tool_call=False
+                )
+        except:
+            raise
+        
+        response.type = "computer_response"
+        # Deliver response
+        # Handle API requests
         if is_api_request:
             if not is_audio_requested_in_api_response:
+                # Add response to history before returning
+                if self.conversation_history_engine:
+                    try:
+                        await self.conversation_history_engine.add_conversation([response])
+                    except Exception as e:
+                        print(f"Error processing recent conversation: {e}")
+                        raise e
+                recent_conversation = recent_conversation + response
                 return response
 
-            # audio in api response
-            else:
-                if self.speech_engine != None:
-                    audio_reply = self.voice_reply(
-                        response, is_audio_requested_in_api_response
-                    )
-                    response = [
-                        ContentSegment(
-                            type="text",
-                            content=_response,
-                            description="text reply",
-                        ),
-                        ContentSegment(
-                            type="text",
-                            audio_url=audio_reply,
-                            description="audio of the text reply",
-                        ),  # TODO: fix it properly according to ContentSegment class
-                    ]
-                    return MessageContent(
-                        role="assistant",
-                        message=response,
-                        timestamp=datetime.now().isoformat(),
-                        type="computer_response",
-                    )
-
-        if not is_api_request and self.voice_reply_enabled:
-            if self.speech_engine != None:
-                # Speak the Computer's reply with interruption handling
-                spoken_reply, unspoken_reply = self.voice_reply(
-                    _response,
-                    is_audio_requested_in_api_response,  # TODO: only text from _response
+            # Handle audio in API response
+            if self.speech_engine != None and response.type != "unspoken":
+                audio_reply = self.voice_reply(
+                    response.content, is_audio_requested_in_api_response
                 )
-                if self.remaining_reply != "":
-                    reply = f"{spoken_reply}"
-                else:
-                    reply = f"{spoken_reply}\n[- Interrupted, Remaining Unspoken Reply: {unspoken_reply} -]"
-
+                response_content = [
+                    ContentSegment(
+                        type="text",
+                        content=response.content,
+                        description="text reply",
+                    ),
+                    ContentSegment(
+                        type="audio",
+                        audio_url=audio_reply,
+                        description="audio of the text reply",
+                    ),
+                ]
+                response = MessageContent(
+                    user="assistant",
+                    content=response_content,
+                    timestamp=datetime.now().isoformat(),
+                    type="computer_response"
+                )
+                # Add response with audio to history before returning
                 if self.conversation_history_engine:
-                    self.conversation_history_engine.add_conversation(
-                        [
-                            MessageContent(
-                                role="assistant",
-                                message=ContentSegment(type="text", content=reply),
-                                timestamp=datetime.now().isoformat(),
-                                type="computer_message",
-                            ),
-                        ]
-                    )
+                    try:
+                        await self.conversation_history_engine.add_conversation([response])
+                    except Exception as e:
+                        print(f"Error processing recent conversation: {e}")
+                        raise e
+                recent_conversation = recent_conversation + response
+                return response
 
-        # Return the spoken reply and unspoken reply, for gui or direct call from other process
-        return MessageContent(
-            role="assistant",
-            message=f"{spoken_reply}\n[- Unspoken Remaining Reply: {unspoken_reply} -]",
-            timestamp=datetime.now().isoformat(),
-        )
+        # Handle voice reply for non-API requests
+        if not is_api_request and self.voice_reply_enabled and self.speech_engine != None:
+            spoken_reply, unspoken_reply = self.voice_reply(
+                _response,
+                is_audio_requested_in_api_response,
+            )
+            reply = f"{spoken_reply}" if self.remaining_reply != "" else f"{spoken_reply}\n[- Interrupted, Remaining Unspoken Reply: {unspoken_reply} -]"
+
+            response = MessageContent(
+                role="assistant",
+                message=ContentSegment(type="text", content=reply),
+                timestamp=datetime.now().isoformat(),
+                type="computer_message",
+            )
+            # Add voice response to history before returning
+            if self.conversation_history_engine:
+                try:
+                    await self.conversation_history_engine.add_conversation([response])
+                except Exception as e:
+                    print(f"Error processing recent conversation: {e}")
+                    raise e
+            recent_conversation = recent_conversation + response
+            return response
+
+        return response
 
     """
     async def _run_withput_gui(self, is_test: bool = False):

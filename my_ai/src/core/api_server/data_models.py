@@ -2,8 +2,7 @@ from datetime import datetime
 from typing import Any, List, Literal, Optional, Union
 
 from pydantic import BaseModel, HttpUrl
-
-
+            
 class Attachment(BaseModel):
     url: Union[HttpUrl, str]
     description: Optional[str] = None
@@ -107,6 +106,7 @@ class MessageContent(BaseModel):
     timestamp: datetime
     content: List[Union[str, ContentSegment]]
     type: Optional[str] = None
+    metadata: dict
 
 
 class RequestMessageSegment(BaseModel):

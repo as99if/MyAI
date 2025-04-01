@@ -37,7 +37,7 @@ class InferenceServer:
             raise e
             # return False
 
-    def start_server(self, host: str = "0.0.0.0", port: int = 50001):
+    def start_server(self, host: str = "0.0.0.0", port: int = 50002):
         name = "computer-inference-server"
         """Start the FastAPI server before starting myAI"""
         
