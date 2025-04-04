@@ -17,7 +17,6 @@ from pydub import AudioSegment
 class TTSEngine:
     def __init__(self):
         
-        
         self.engine = Kokoro("./models/speech/kokoro-quant.onnx",
                              "./models/speech/voices.bin")
         # download from here - https://github.com/thewh1teagle/kokoro-onnx?tab=readme-ov-file#setup

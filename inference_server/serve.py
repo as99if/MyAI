@@ -37,11 +37,11 @@ class InferenceServer:
             raise e
             # return False
 
-    def start_server(self, host: str = "0.0.0.0", port: int = 50002):
+    def start_server(self):
         name = "computer-inference-server"
         """Start the FastAPI server before starting myAI"""
         
-        subprocess.run(["python", "-m", "llama_cpp.server", "--config_file", f"inference_server/inference_server_config.json", "--host", f"{host}", "--port", f"{port}"])
+        subprocess.run(["python", "-m", "llama_cpp.server", "--config_file", f"inference_server_config.json"])
         # see llama_cpp/server/settings.py for more options to use multiple models
         
         

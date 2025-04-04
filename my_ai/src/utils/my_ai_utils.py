@@ -14,6 +14,6 @@ def load_prompt(path: str = "src/config/prompts/system_prompts.json"):
         logger.error("Invalid JSON in config file")
         raise
 
-
 def split_list(input_list, chunk_size):
     return [input_list[i:i+chunk_size] for i in range(0, len(input_list), chunk_size)]
+

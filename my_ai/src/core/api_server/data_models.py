@@ -104,9 +104,10 @@ class MessageContent(BaseModel):
     """
     role: Literal["user", "assistant", "system"]
     timestamp: datetime
-    content: List[Union[str, ContentSegment]]
+    content: Union[str, List[Union[str, ContentSegment]]]
     type: Optional[str] = None
-    metadata: dict
+    unspoken_message: bool = False
+    metadata: Optional[dict] = None
 
 
 class RequestMessageSegment(BaseModel):

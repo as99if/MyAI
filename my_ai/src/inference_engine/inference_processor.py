@@ -8,26 +8,24 @@ Uses async operations for better performance and supports context management.
 author: {Asif Ahmed}
 """
 
-import asyncio
 from datetime import datetime
-import json
-import multiprocessing
 import pprint
 from typing import Any, List, Optional, Dict
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel
 import aiohttp
 import logging
-from my_ai.src.core.api_server.data_models import MessageContent
+from src.config.config import load_config
+from src.ai_tools.gemini import gemini_inference
+from src.core.api_server.data_models import MessageContent
+from src.core.schemas import ToolCallResponseSchema
 from src.ai_tools.groq import groq_inference
 from src.ai_tools.siri_service import execute_siri_command
 import requests
 from langchain.schema import HumanMessage, SystemMessage, AIMessage
-from my_ai.src.utils.my_ai_utils import load_config, load_prompt
+from src.utils.my_ai_utils import load_prompt
 from langchain_core.tools import Tool
 from langchain.agents import (
-    AgentType,
-    initialize_agent,
     create_openai_tools_agent,
     AgentExecutor,
 )
@@ -56,8 +54,47 @@ class InferenceProcessor:
         self.agent = None
         self.agent_executor = None
 
-        self._initialize_llm_client()
         self.system_prompts = load_prompt()
+        self.llm_name: str = None
+        self.vlm_name: str = None
+        self.llm_inference_client = None
+        self.vlm_inference_client = None
+        self.tools = [
+            Tool(
+                func=groq_inference,
+                name="Groq Inference",
+                description="Ask Groq for response.",
+                args_schema={
+                    "message": {
+                        "type": "string",
+                        "default": "",
+                        "description": "Prompt to ask gemini for response with google search."
+                    },
+                    "is_think_needed": {
+                        "type": "boolean",
+                        "default": True,
+                        "description": "Whether to return thinking steps separately"
+                    },
+                },
+                return_direct=True
+            ),
+            Tool(
+                func=gemini_inference,
+                name="Gemini Inference",
+                description="Ask Gemini for response.",
+                args_schema={
+                    "message": {
+                        "type": "string",
+                        "default": "",
+                        "description": "Prompt to ask gemini for response with google search."
+                    },
+                },
+                return_direct=True
+            )
+        ]
+        self._initialize_llm_client()
+        
+        
 
     def _initialize_llm_client(self) -> None:
         """
@@ -65,61 +102,59 @@ class InferenceProcessor:
         Sets up both standard language model and vision model clients.
         Uses Gemma-3 optimized parameters for inference.
         """
-        # Standard LLM client initialization with optimized parameters
-        self.llm_inference_client = ChatOpenAI(
-            base_url=self.config.get("base_url", "http://localhost:50001"),
-            model_name=self.config.get("llm", "gemma-3-1b"),
-            streaming=False,
-            api_key="None",
-            stop_sequences=["<end_of_turn>", "<eos>"],
-            temperature=1.0,
-            # repeat_penalty=1.0,
-            # top_k=64,
-            top_p=0.95,
-            n=2,
-            max_completion_tokens=512,
-        )
+        try:
+            # Standard LLM client initialization with optimized parameters
+            self.llm_inference_client = ChatOpenAI(
+                base_url=self.config.get("base_url", "http://localhost:50001"),
+                model_name=self.config.get("llm", "gemma-3-1b"), # or overthinker
+                streaming=False,
+                api_key="None",
+                stop_sequences=["<end_of_turn>", "<eos>"],
+                temperature=1.0,
+                # repeat_penalty=1.0,
+                # top_k=64,
+                top_p=0.95,
+                n=2,
+                max_completion_tokens=512,
+            )
+            # TODO: in a certain time of the day or in random schedule - switch to models (overthinker and gemma-3-1b)
 
-        # Vision model client initialization
-        self.vlm_inference_client = ChatOpenAI(
-            base_url=self.config.get("base_url", "http://localhost:50001"),
-            model_name=self.config.get("vlm"),
-            streaming=False,
-            api_key="None",
-            stop_sequences=["<end_of_turn>", "<eos>"],
-            temperature=1.0,
-            # repeat_penalty=1.0,
-            top_k=64,
-            top_p=0.95,
-            min_p=0.01,
-            n=8,
-            max_completion_tokens=1024,
-        )
+            # Vision model client initialization
+            self.vlm_inference_client = ChatOpenAI(
+                base_url=self.config.get("base_url", "http://localhost:50001"),
+                model_name=self.config.get("vlm", "gemma-3-4b-multimodal"),
+                streaming=False,
+                api_key="None",
+                stop_sequences=["<end_of_turn>", "<eos>"],
+                temperature=1.0,
+                # repeat_penalty=1.0,
+                # top_k=64,
+                top_p=0.95,
+                # min_p=0.01,
+                n=8,
+                max_completion_tokens=1024,
+            )
+        except Exception as e:
+            print("Error initializing LLM or VLM client:", e)
+            logging.error(f"Error initializing LLM or VLM client: {e}")
+            pass
 
-    def _initialize_agent(self) -> None:
+    def _initialize_agent(self, prompt) -> None:
         """
         Initialize LangChain agent with tools and system prompt.
         Sets up agent for tool-augmented responses.
         """
         agent_system_prompt = [
             SystemMessage(
-                content="You are a helpful assistant that can use tools to perform calculations."
+                content="You are a helpful assistant that can use tools to perform tasks."
             ),
-            HumanMessage(content={input}),
-        ]
-
-        tools = [
-            Tool(
-                func=groq_inference,
-                name="groq_inference",
-                description="Ask Groq for response.",
-            ),
+            HumanMessage(content=prompt),
         ]
 
         self.agent = create_openai_tools_agent(
-            self.llm_inference_client, tools, agent_system_prompt
+            self.llm_inference_client, self.tools, agent_system_prompt
         )
-        self.agent_executor = AgentExecutor(agent=self.agent, tools=tools, verbose=True)
+        self.agent_executor = AgentExecutor(agent=self.agent, tools=self.tools, verbose=True)
 
     def _clean_agent(self) -> None:
         """Clean up agent resources to prevent memory leaks."""
@@ -155,12 +190,15 @@ class InferenceProcessor:
 
     async def create_chat_completion(
         self,
-        messages: list = [],
+        messages: List[MessageContent] = [],
         command: str = None,
         if_tool_call: bool = False,
         tool_list: list = None,
+        schema: Any = None,
         if_vision_inference: bool = False,
         if_camera_feed: bool = False,
+        llm_name: str = None,
+        vlm_name: str = None
     ) -> MessageContent:
         """
         Generate chat completion with context management.
@@ -178,11 +216,28 @@ class InferenceProcessor:
         Raises:
             Exception: If chat completion fails
         """
-        formatted_messages = []
+        
+        if llm_name:
+            # 'overthinker' = deepseek r1 distill llama 3
+            self.llm_inference_client.model_name = llm_name
+        if vlm_name:
+            self.vlm_inference_client.model_name = vlm_name
+            
+        is_server_alive: bool = await self._check_inference_server_health()
+        if not is_server_alive:
+            return MessageContent(
+                role="assistant",
+                timestamp=datetime.now().isoformat(),
+                content="LLM Server Not Running"
+            )
+        
+        # TODO: in a certain time of the day or in random schedule - switch to models (overthinker and gemma-3-1b)
+        
+        formatted_messages: list = []
 
         # Add system message first
         formatted_messages.append(
-            SystemMessage(
+            HumanMessage(
                 content=f"{self.system_prompts['chatbot_system_prompt']} {self.system_prompts['chatbot_guidelines']}"
             )
         )
@@ -190,64 +245,70 @@ class InferenceProcessor:
 
         # Format user and assistant messages (from recent and new messages )
         for msg in messages:
-            if msg["role"] == "user":
-                formatted_messages.append(HumanMessage(content=msg["content"]))
-            elif msg["role"] == "assistant":
-                formatted_messages.append(AIMessage(content=msg["content"]))
+            if type(msg.content) is str:
+                if msg.role == "user":
+                    formatted_messages.append(HumanMessage(content=msg.content))
+                elif msg.role == "assistant":
+                    formatted_messages.append(AIMessage(content=msg.content))
+            # handle content with image, video etc.
 
         # print("processed prompt formatted:\n")
-        pprint.pprint(formatted_messages)
+        # pprint.pprint(formatted_messages)
 
-        print("messeages formatted")
+        # print("messeages formatted")
+        if schema is not None:
+            print("---------------- schema provided ----------------")
+            self.llm_inference_client.with_structured_output(schema)
         try:
-
             print("invoking model")
-
-            # langchain OpenAI like chat_completion API call
-
+            # langchain OpenAI like chat_completion API response
             if if_vision_inference:  # trun on with bool / button / checkbox in gui
                 # vision inference
+                # TODO: format vision content with prompt in my ai assistant 
+                # no json schema for now
                 response = await self.vlm_inference_client.ainvoke(formatted_messages)
+                response = response["choices"][0]["message"]["content"]
+                response = MessageContent(
+                    role="assistant",
+                    timestamp=datetime.now().isoformat(),
+                    content=response
+                )
                 return response
 
-            if if_tool_call:  # trun on with bool / button / checkbox in gui
-                
+            if if_tool_call:  # trun on with bool / button / checkbox in gui or by llm's self planning
                 if command:
-                    self._initialize_agent()
+                    # init agent for tool call
+                    self._initialize_agent(command)
                     # Run the agent
-                    agent_response = self.agent_executor.invoke({"input": command})
+                    agent_response = self.agent_executor.invoke()
 
                     # show a clickable small box as reply - click here to see result (if result is big or smth) (opens a new window or smth)
                     # if result is small - show there
-                    agent_response = agent_response["output"]
-                    formatted_messages.append(AIMessage(content=f"{agent_response}"))
-                    formatted_messages.append(
-                        HumanMessage(
-                            content="Now write a short reply from the agent's response."
-                        )
+                    agent_response: ToolCallResponseSchema = agent_response["output"]
+                    response = MessageContent(
+                        role="assistant",
+                        content=agent_response,
+                        timestamp=datetime.now().isoformat(),
+                        type="tool_call_agent_response"
                     )
                     self._clean_agent()
+                    return response
 
+            
             response = await self.llm_inference_client.ainvoke(formatted_messages)
-            print(response)
-            response = response["choices"][0]["message"]["content"]
-            metadata = {}  # metaata from response
-            MessageContent(
-                role="assistant",
-                timestamp=datetime.now().isoformat(),
-                content=response,
-                metadata=metadata
-            )
-            # make it MessageContent
-            return response
+            pprint.pprint(response)
 
-        except Exception as e:
-            #raise Exception(f"Error during chat completion: {e}")
+            # make it MessageContent
             return MessageContent(
                 role="assistant",
                 timestamp=datetime.now().isoformat(),
-                content="LLM Server Not Running"
+                content=response.content,
+                metadata=response.response_metadata
             )
+
+        except Exception as e:
+            raise Exception(f"Error during chat completion: {e}")
+            
 
 
 """

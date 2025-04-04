@@ -146,62 +146,52 @@ stateDiagram-v2
 
 ```mermaid
 flowchart TD
-    %% Initial message handling
-    A[Start] --> B{Vision\nEnabled?}
-    B -->|No| C[Create Basic Message]
-    B -->|Yes| D[Create Vision Message]
+    Start([Start]) --> InitResponse[Initialize Response]
+    InitResponse --> SetMsgType[Set Message Type to 'user_message']
+    SetMsgType --> InitHistory[Initialize Conversation History]
     
-    %% Vision message processing
-    D -->|Screenshot| E1[Add Screenshot Text]
-    D -->|Camera Feed| E2[Add Camera Feed Text]
-    D -->|Video File| E3[Add Video File Text]
-    D -->|Image URLs| E4[Process Image URLs]
-    E1 & E2 & E3 & E4 --> F[Format Vision Message]
+    InitHistory --> CreatePrompts[Create Hidden System Prompts]
+    CreatePrompts --> HasHistoryEngine{Has History Engine?}
     
-    C & F --> G{Check History\nEngine}
+    HasHistoryEngine -->|Yes| GetRecentConv[Get Recent Conversation]
+    HasHistoryEngine -->|No| UseLocalConv[Use Local Conversation]
     
-    %% Conversation history handling
-    G -->|Available| H1[Get Recent History]
-    G -->|Not Available| H2[Create Empty History]
-    H1 & H2 --> I[Add User Message]
-    I --> J[Store in Database]
+    GetRecentConv --> AddSystemMsgs[Add Hidden Prompt Messages to Conversation]
+    UseLocalConv --> AddSystemMsgs
+    AddSystemMsgs --> AddUserMsg[Add User Message to Conversation]
     
-    %% Generate AI Response
-    I --> K[Generate AI Response]
+    AddUserMsg --> GenInitialResp[AI response on Self-Reflection or Planning, add to conversation history]
     
-    %% Process Response
-    K --> L{Voice Reply\nEnabled?}
+    GenInitialResp --> IsToolCallNeeded{Tool Call<br>Necessary?}
     
-    %% Handle different response types
-    L -->|No| M1[Return Text Response]
-    L -->|Yes| N{Is API Request?}
+    IsToolCallNeeded -->|Yes| IsMultiTool{Multiple Tools<br>Needed?}
+    IsToolCallNeeded -->|No| ProceedWithoutTool[Process Without Tool Call]
     
-    N -->|Yes & Audio| O1[Generate Audio]
-    N -->|Yes & No Audio| M1
-    N -->|No| O2[Generate Voice Reply]
+    IsMultiTool -->|No| SingleToolCall[Process Single Tool Call]
+    IsMultiTool -->|Yes| MultiToolCall[Process Multiple Tool Calls]
     
-    %% Voice reply processing
-    O2 --> P1[Process Spoken Part]
-    O2 --> P2[Handle Interruptions]
+    SingleToolCall --> PostReflection[Post Tool Call Reflection]
+    MultiToolCall --> PostReflection
     
-    %% Store responses
-    P1 --> Q1[Store Spoken Reply]
-    P2 --> Q2[Store Unspoken Reply]
-    M1 --> Q3[Store Text Reply]
+    PostReflection --> PrepareResponse[Prepare Final Response]
+    ProceedWithoutTool --> PrepareResponse
     
-    %% Final response
-    Q1 & Q2 & Q3 --> R[Return Final Response]
-    O1 --> R
-    R --> S[End]
-
-    %% Styling
-    classDef process fill:#f0f0f0,stroke:#333,stroke-width:2px
-    classDef decision fill:#fffbd6,stroke:#333,stroke-width:2px
-    classDef storage fill:#e1f3ff,stroke:#333,stroke-width:2px
+    PrepareResponse --> IsApiRequest{Is API Request?}
     
-    class A,C,D,E1,E2,E3,E4,F,I,K,M1,O1,O2,P1,P2 process
-    class B,G,L,N decision
-    class J,Q1,Q2,Q3 storage
+    IsApiRequest -->|Yes| HandleApiResponse[Handle API Response]
+    IsApiRequest -->|No| IsVoiceEnabled{Voice Reply<br>Enabled?}
+    
+    HandleApiResponse --> NeedsAudio{Audio Requested?}
+    NeedsAudio -->|Yes| AddAudioResponse[Add Audio to Response]
+    NeedsAudio -->|No| ReturnResponse[Return Response]
+    
+    IsVoiceEnabled -->|Yes| ProcessVoiceReply[Process Voice Reply]
+    IsVoiceEnabled -->|No| ReturnResponse
+    
+    AddAudioResponse --> ReturnResponse
+    ProcessVoiceReply --> ReturnResponse
+    
+    ReturnResponse --> End([End])
 ```
 
 ## Flow Description

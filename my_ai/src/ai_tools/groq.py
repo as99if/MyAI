@@ -11,13 +11,11 @@ from pathlib import Path
 import pprint
 from typing import Any
 from groq import Groq
-from my_ai.src.utils.my_ai_utils import load_config
+from src.core.schemas import ToolCallResponseSchema
 from src.config.config import api_keys
 
 def groq_inference(
     message: str, 
-    system_message: str, 
-    api_key: str, 
     temperature: int = 0.8, 
     max_completion_tokens: int = 4096, 
     is_think_needed: bool = True,
@@ -33,7 +31,7 @@ def groq_inference(
         temperature (int, optional): Controls randomness in the response. Defaults to 0.8
         max_completion_tokens (int, optional): Maximum tokens in the response. Defaults to 4096
         is_think_needed (bool, optional): Whether to return thinking steps separately. Defaults to True
-        task_memory_messages (list, optional): Previous conversation history. Defaults to empty list. Caution - Personal data will go to Groq.
+        task_memory_messages (list, optional): Previous conversation history or something else as task context. Defaults to empty list. Caution - Personal data will go to Groq.
     
     Returns:
         tuple[str, str]: A tuple containing:
@@ -43,6 +41,7 @@ def groq_inference(
     print("- requesting groq inference -")
     
     # Initialize the messages list with system prompt and initial assistant acknowledgment
+    system_message = "You are helpful AI chatbot. Respond to messages, thouroughly. Elaborate if necesssary. Bullet points, or markdown formatted text reponse is encouraged."
     messages = [
                 {"role": "system", "content": system_message},
                 {"role": "assistant", "content": "Okay."},
@@ -69,7 +68,7 @@ def groq_inference(
     messages.append({"role": "user", "content": message})
         
     # Initialize Groq client and perform inference
-    with Groq(api_key=api_key) as client:
+    with Groq(api_key=api_keys.groq_api_key) as client:
         # Get available models and filter for Meta models with large context windows
         models = client.models.list()
         models = [model for model in models.data if "Meta" in model.owned_by and int(model.context_window) >= 32768]
@@ -103,22 +102,33 @@ def groq_inference(
                 "think": think_content,
                 "response" : rest_content
             }
-            return response_text, chat_completion.model
+            response_text, chat_completion.model
+            return ToolCallResponseSchema(
+                tool_used="Groq Inference",
+                short_description_of_the_tool=f"Inference from Groq AI platform, model: {chat_completion.model}.",
+                result=response_text
+            ) 
         else:
-            return rest_content, chat_completion.model
+            return ToolCallResponseSchema(
+                tool_used="Groq Inference",
+                short_description_of_the_tool=f"Inference from Groq AI platform, model: {chat_completion.model}.",
+                result=rest_content
+            ) 
     else:
-        return response_text, chat_completion.model
+        return ToolCallResponseSchema(
+            tool_used="Groq Inference",
+            short_description_of_the_tool=f"Inference from Groq AI platform, model: {chat_completion.model}.",
+            result=response_text
+        )    
 
-def test_groq_inference():
+if __name__ == "__main__":
     """
     Test function for the groq_inference method.
     Loads configuration, sets up a simple test case, and prints the response.
     """
-    config = load_config()
     system_message = "You are a helpful AI assistant. You do no write anything unnecessary, reply concise and short results."
     message = "count one to five"
     
-    model = config.get("groq_model_name")
     api_key = api_keys.groq_api_key
     response_text, chat_completion_model = groq_inference(message=message, api_key=api_key, system_message=system_message)
     pprint.pprint(response_text)
