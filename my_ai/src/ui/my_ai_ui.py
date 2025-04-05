@@ -1,224 +1,170 @@
-import asyncio
-from datetime import datetime
-import flet as ft
-from typing import List, Optional
-from langchain.schema import HumanMessage, SystemMessage, AIMessage
-from pydantic import BaseModel
-from src.core.my_ai import MyAI
+import pprint
+from typing import List
+import gradio as gr
+import random
+import time
+import logging
+from src.utils.log_manager import LoggingManager
+from src.core.api_server.data_models import MessageContent
+from src.core.my_ai_assistant import MyAIAssistant
+from src.inference_engine.inference_processor import InferenceProcessor
 
-# ui was working fine before adding this my_ai
-# now it's not working
-
-messages = []
-is_loading = False
-
-async def initialize():
-    global messages, is_loading
-
-    try:
-        print("MyAI UI initializing ...")
-        my_ai = MyAI(is_gui_enabled=True)
-        await my_ai.run()
-        print("MyAI Assistant Loading ...")
-        if my_ai and not my_ai.is_loading:
-            my_ai_assistant = my_ai.my_ai_assistant
-            print("MyAI Assistant loaded successfully")
-            print("Conversation History Engine Loading ...")
-            if my_ai_assistant and hasattr(
-                my_ai_assistant, "conversation_history_engine"
-            ):
-                conversation_history_engine = my_ai_assistant.conversation_history_engine
-                # Call the function properly (no 'self'):
-                messages = await fetch_recent_conversation()
-                print("Conversation History Engine loaded successfully, recent fetched")
-            else:
-                print("Conversation History Engine not loaded")
-    except Exception as e:
-        print(f"Error initializing MyAI UI: {e}")
-        is_loading = False
-    print("* MyAI UI initialized successfully")
-
-    # Remove 'self' from the signature, or pass it in if needed
-    async def fetch_recent_conversation():
-        global conversation_history_engine
-        if conversation_history_engine:
-            return await conversation_history_engine.get_recent_conversations()
-        return []
-
-    return my_ai_assistant
-
-def main(page: ft.Page):
-    global messages, is_loading
-
-    my_ai_assistant = None
-
-    print("main")
-    # Configure page
-    page.title = "MyAI Chat"
-    page.theme_mode = ft.ThemeMode.DARK
-    page.window_width = 800
-    page.window_height = 600
-    page.window_min_width = 400
-    page.window_min_height = 400
-    page.padding = 0
-    page.spacing = 0
-    page.bgcolor = ft.colors.RED_300
+class MyAIUI:
     
-    new_message.value = ""
-    # Set the page to fill available space
-    # page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-    #page.vertical_alignment = ft.MainAxisAlignment.CENTER
+    def __init__(self, inference_processor: InferenceProcessor = None, my_ai_assistant: MyAIAssistant = None):
+        
+        self.inference_processor = inference_processor
+        self.my_ai_assistant = my_ai_assistant
+        self.messages = None
+        # Sample responses - replace with your actual chatbot logic
+        self.sample_responses = [
+            "Hello! How can I help you today?",
+            "That's an interesting question. Let me think about that.",
+            "I'm a simple chatbot. My responses are pre-programmed.",
+            "Could you please elaborate on that?",
+            "Thanks for sharing! Is there anything else you'd like to discuss?",
+            "I'm here to assist you with any questions you might have."
+        ]
+        self.css = """
+        .log_display {
+            font-size: 0.4em;
+            font-family: monospace;
+            line-height: 1.2;
+            white-space: pre-wrap;
+            color: #4a4a4a;
+        }
+        """
+        
+        # Initialize logging manager
+        self.logging_manager = LoggingManager()
+        self.logging_manager.subscribe(self.update_log_display)
+        
+        
+        # Create a custom theme
+        self.theme = gr.themes.Soft(
+            primary_hue="blue",
+            secondary_hue="gray",
+        ).set()
+        self.is_my_ai_inistialized: bool = False
+        self.is_loading: bool = False
+        self.app_ui = None
+        self._initialize_my_ai()
+        if self.is_my_ai_inistialized:
+            self._initialize_app_ui()
+        
 
-    # ... keep existing handle_submit function ...
-    async def handle_submit(e):
-        if not new_message.value:
-            return
-
-        # Add user message
-        messages.append(
-            HumanMessage(
-                content=new_message.value,
-                timestamp=datetime.now(),
-            )
-        )
-        reply = my_ai_assistant.process_and_create_chat_generation(new_message.value)
-        messages.append(
-            AIMessage(
-                content=reply,
-                timestamp=datetime.now(),
-            )
-        )
-
-        new_message.value = ""
-        chat_list.controls = create_message_widgets()
-        await page.update_async()
-
-        # Chat messages list
-
-    chat_list = ft.ListView(
-        expand=1,  # Changed from True to 1
-        spacing=10,
-        padding=20,
-        auto_scroll=True,
-    )
-
-    chat_list.controls = create_message_widgets()
-
-    # Message input
-    new_message = ft.TextField(
-        hint_text="Type your message here...",
-        border_radius=30,
-        min_lines=1,
-        max_lines=5,
-        filled=True,
-        expand=True,
-        on_submit=handle_submit,
-        autofocus=True,  # Added autofocus
-    )
-
-    # Send button
-    send_button = ft.IconButton(
-        icon=ft.icons.SEND_ROUNDED,
-        on_click=handle_submit,
-        icon_color=ft.colors.BLUE_400,
-    )
-
-    # Input container
-    input_container = ft.Container(
-        content=ft.Row(
-            [new_message, send_button],
-            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-            spacing=10,  # Added spacing
-        ),
-        padding=10,
-        bgcolor=ft.colors.SURFACE_VARIANT,
-    )
-
-    # Main layout
-    main_content = ft.Column(
-        controls=[
-            ft.Container(
-                content=chat_list,
-                expand=4,  # Changed from True to 4
-                border=ft.border.all(1, ft.colors.OUTLINE),
-                border_radius=10,
-                bgcolor=ft.colors.SURFACE_VARIANT,
-            ),
-            input_container,
-        ],
-        spacing=10,
-        expand=True,
-    )
-
-    # Root container
-    root_container = ft.Container(
-        content=main_content,
-        margin=10,
-        padding=10,
-        expand=True,
-    )
-
-    page.add(root_container)
-    page.update()
-
-    def create_message_widgets() -> List[ft.Control]:
-        print("creating message widgets")
-        message_widgets = []
-        for msg in messages:
-            is_user = isinstance(msg, HumanMessage)
-            message_widgets.append(
-                ft.Container(
-                    content=ft.Column(
-                        [
-                            ft.Row(
-                                [
-                                    ft.Text(
-                                        "You" if is_user else "AI",
-                                        size=12,
-                                        color=(
-                                            ft.colors.BLUE_400
-                                            if is_user
-                                            else ft.colors.GREEN_400
-                                        ),
-                                        weight=ft.FontWeight.BOLD,
-                                    ),
-                                    ft.Text(
-                                        msg.timestamp.strftime("%H:%M"),
-                                        size=10,
-                                        color=ft.colors.OUTLINE,
-                                        weight=ft.FontWeight.NORMAL,
-                                    ),
-                                ],
-                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                            ),
-                            ft.Container(
-                                content=ft.Text(msg.content),
-                                bgcolor=(
-                                    ft.colors.BLUE_GREY_900
-                                    if is_user
-                                    else ft.colors.SURFACE_VARIANT
-                                ),
-                                border_radius=10,
-                                padding=15,
-                                width=float("inf"),
-                            ),
-                        ],
-                        spacing=5,
-                    ),
-                    margin=ft.margin.symmetric(horizontal=20, vertical=5),
-                    alignment=(
-                        ft.alignment.center_right
-                        if is_user
-                        else ft.alignment.center_left
-                    ),
-                )
-            )
-        return message_widgets
     
-    my_ai_assistant = asyncio.run(initialize())
+    def _initialize_my_ai(self):
+        self.inference_processor = InferenceProcessor()
+        self.my_ai_assistant = MyAIAssistant(
+            inference_processor=self.inference_processor,
+        )
+        self.is_my_ai_inistialized = True
+    
+    def update_log_display(self, logs: str):
+        """Callback to update the UI log display"""
+        if hasattr(self, 'log_display'):
+            self.log_display.value=logs
+    
+    def log_message(self, message: str, level: str = "INFO"):
+        """Add a log message to the logging panel"""
+        self.logging_manager.add_message(message, level, source="UI")
+        return self.logging_manager.get_logs()
+        
+    async def send_message(self, message: str, history: List[str] = []):
+        # Add a small delay to simulate the assistant "thinking" 
+        self.messages.value=[history, message]
+        time.sleep(0.5)
+        
+        # Get random response from samples
+        # bot_response = random.choice(self.sample_responses)
+        
+        _message: MessageContent = MessageContent(
+            role="user",
+            content=message,
+            timestamp=time.time(),
+        )
+        _response, recent_messages = await self.my_ai_assistant.process_and_create_chat_generation(
+            message=_message,
+            is_tool_call_permitted=True
+        )
+        pprint.pprint(_response)
+        response = _response.content
+        
+            
+        # For chatbot, we need to return a list of message pairs
+        history = history
+        history.append([message, response])
+        return history
 
+    def _initialize_app_ui(self):
+        with gr.Blocks(theme=self.theme, css=self.css) as self.app_ui:
+            gr.HTML("<div class='title'>Simple Chatbot Assistant</div>")
+            
+            with gr.Row():
+                # Chat column
+                with gr.Column(scale=2):
+                    self.messages = gr.Chatbot(
+                        value=[["Yo", "Yo."]],
+                        elem_classes=["chatbot"],
+                        avatar_images=(None, "https://api.dicebear.com/7.x/bottts/svg?seed=Assistant"),
+                        height=500,
+                        show_label=False,
+                    )
+                    
+                    with gr.Row():
+                        msg = gr.Textbox(
+                            placeholder="Type your message here...",
+                            container=False,
+                            scale=9,
+                            show_label=False,
+                            autofocus=True
+                        )
+                        submit_btn = gr.Button(
+                            "Send",
+                            scale=1,
+                            variant="primary",
+                            size="lg"
+                        )
+                
+                # Logging column
+                with gr.Column(scale=1):
+                    self.log_display = gr.Textbox(
+                        label="System Logs",
+                        value="",
+                        lines=25,
+                        max_lines=25,
+                        interactive=False,
+                        elem_classes=["log_display"],
+                    )
+            
+            # Event handlers
+            msg.submit(
+                fn=self.send_message,
+                inputs=[msg, self.messages],
+                outputs=[self.messages],
+                queue=False
+            ).then(
+                fn=lambda: "",  # Clear input box after sending
+                outputs=[msg]
+            ).then(
+                fn=self.logging_manager.get_logs,  # Update logs after message
+                outputs=[self.log_display]
+            )
+            
+            submit_btn.click(
+                fn=self.send_message,
+                inputs=[msg, self.messages],
+                outputs=[self.messages],
+                queue=False
+            ).then(
+                fn=lambda: "",  # Clear input box after sending
+                outputs=[msg]
+            ).then(
+                fn=self.logging_manager.get_logs,  # Update logs after message
+                outputs=[self.log_display]
+            )
 
 if __name__ == "__main__":
-    print("app ui starting")
-    ft.app(target=main, name="MyAI", view=ft.AppView.FLET_APP)
-    print("app loaded")
+    app = MyAIUI()
+    app.app_ui.launch(debug=True)

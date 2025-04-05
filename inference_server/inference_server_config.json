@@ -6,14 +6,14 @@
     "root_path": "/Users/asifahmed/Development/MyAI/inference_server",
     "models": [
         {
-            "model": "models/llm/gemma-3-1b/gemma-3-1b-it-Q4_K_M.gguf",
-            "model_alias": "gemma-3-1b",
-            "n_gpu_layers": -1
-        },
-        {
             "model": "models/vlm/gemma-3-4b/gemma-3-4b-it-Q4_K_M.gguf",
             "model_alias": "gemma-3-4b-multimodal",
             "clip_model_path": "/Users/asifahmed/Development/MyAI/models/vlm/gemma-3-4b/mmproj-BF16.gguf",
+            "n_gpu_layers": -1
+        },
+        {
+            "model": "models/llm/gemma-3-1b/gemma-3-1b-it-Q4_K_M.gguf",
+            "model_alias": "gemma-3-1b",
             "n_gpu_layers": -1
         },
         {

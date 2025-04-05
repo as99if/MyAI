@@ -15,6 +15,7 @@ from langchain_openai import ChatOpenAI
 from pydantic import BaseModel
 import aiohttp
 import logging
+from src.utils.log_manager import LoggingManager
 from src.config.config import load_config
 from src.ai_tools.gemini import gemini_inference
 from src.core.api_server.data_models import MessageContent
@@ -42,6 +43,9 @@ class InferenceProcessor:
         Initialize inference processor with configuration and clients.
         Loads config, sets up LLM clients, and initializes system prompts.
         """
+        self.logging_manager = LoggingManager()
+        self.logging_manager.add_message("Initiating - InferenceProcessor", level="INFO", source="InferenceProcessor")
+        
         self.config = load_config()
 
         # Context management settings
@@ -93,9 +97,9 @@ class InferenceProcessor:
             )
         ]
         self._initialize_llm_client()
+        self.logging_manager.add_message("Coleted Initiatiion - InferenceProcessor", level="INFO", source="InferenceProcessor")
+        self.logging_manager.add_message(f"LLM: {self.config.get('llm')}\nVLM: {self.config.get('vlm')}", level="INFO", source="InferenceProcessor")
         
-        
-
     def _initialize_llm_client(self) -> None:
         """
         Initialize LLM clients with optimized parameters.
@@ -144,6 +148,8 @@ class InferenceProcessor:
         Initialize LangChain agent with tools and system prompt.
         Sets up agent for tool-augmented responses.
         """
+        self.logging_manager.add_message("Initiating Tool Call Agent", level="INFO", source="InferenceProcessor")
+        
         agent_system_prompt = [
             SystemMessage(
                 content="You are a helpful assistant that can use tools to perform tasks."
@@ -216,6 +222,8 @@ class InferenceProcessor:
         Raises:
             Exception: If chat completion fails
         """
+        self.logging_manager.add_message("Inititating create_chat_completion", level="INFO", source="InferenceProcessor")
+        self.logging_manager.add_message(f"User prompt message:\n{messages}", level="INFO", source="InferenceProcessor")
         
         if llm_name:
             # 'overthinker' = deepseek r1 distill llama 3
@@ -250,34 +258,49 @@ class InferenceProcessor:
                     formatted_messages.append(HumanMessage(content=msg.content))
                 elif msg.role == "assistant":
                     formatted_messages.append(AIMessage(content=msg.content))
-            # handle content with image, video etc.
-
+            else:
+                if type(msg.content.type) == "text":
+                    if msg.role == "user":
+                        formatted_messages.append(HumanMessage(content=msg.content.text))
+                    elif msg.role == "assistant":
+                        formatted_messages.append(AIMessage(content=msg.text))
+            # handle content with image, video etc. or content with multiple content segment or multiple types
+        
+        self.logging_manager.add_message(f"Formatted context messages with conversation history and sstem instructional messages.", level="INFO", source="InferenceProcessor")
         # print("processed prompt formatted:\n")
         # pprint.pprint(formatted_messages)
 
         # print("messeages formatted")
         if schema is not None:
             print("---------------- schema provided ----------------")
-            self.llm_inference_client.with_structured_output(schema)
+            self.logging_manager.add_message(f"JSON Schema provided for formatted reply", level="INFO", source="InferenceProcessor")
+            self.llm_inference_client = self.llm_inference_client.with_structured_output(schema=schema)
+            ## TODO: issue with schema - not working
         try:
             print("invoking model")
+            self.logging_manager.add_message(f"Invoking model", level="INFO", source="InferenceProcessor")
             # langchain OpenAI like chat_completion API response
             if if_vision_inference:  # trun on with bool / button / checkbox in gui
                 # vision inference
+                print("----------------- vlm inference -----------------")
+                self.logging_manager.add_message(f"VLM inference", level="INFO", source="InferenceProcessor")
                 # TODO: format vision content with prompt in my ai assistant 
                 # no json schema for now
                 response = await self.vlm_inference_client.ainvoke(formatted_messages)
-                response = response["choices"][0]["message"]["content"]
                 response = MessageContent(
                     role="assistant",
                     timestamp=datetime.now().isoformat(),
-                    content=response
+                    content=response.content,
+                    metadata=response.response_metadata
                 )
+                self.logging_manager.add_message(f"VLM inference response: {response}", level="INFO", source="InferenceProcessor")
                 return response
 
             if if_tool_call:  # trun on with bool / button / checkbox in gui or by llm's self planning
                 if command:
                     # init agent for tool call
+                    print("----------------- tool call inference -----------------")
+                    self.logging_manager.add_message(f"Tool call inference", level="INFO", source="InferenceProcessor")
                     self._initialize_agent(command)
                     # Run the agent
                     agent_response = self.agent_executor.invoke()
@@ -291,20 +314,25 @@ class InferenceProcessor:
                         timestamp=datetime.now().isoformat(),
                         type="tool_call_agent_response"
                     )
+                    self.logging_manager.add_message(f"Tool call response: {response}", level="INFO", source="InferenceProcessor")
                     self._clean_agent()
                     return response
 
-            
+            print("----------------- basic llm inference -----------------")
+            self.logging_manager.add_message(f"LLM inference", level="INFO", source="InferenceProcessor")
             response = await self.llm_inference_client.ainvoke(formatted_messages)
-            pprint.pprint(response)
-
+            # pprint.pprint(response.content)
+            
             # make it MessageContent
-            return MessageContent(
+            
+            response = MessageContent(
                 role="assistant",
                 timestamp=datetime.now().isoformat(),
                 content=response.content,
                 metadata=response.response_metadata
             )
+            self.logging_manager.add_message(f"LLM inference response: {response}", level="INFO", source="InferenceProcessor")
+            return response
 
         except Exception as e:
             raise Exception(f"Error during chat completion: {e}")

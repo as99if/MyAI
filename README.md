@@ -21,7 +21,7 @@ pip install -r requrements.txt
 make db-run  # for redis dbs
 python -m inference_server.serve # has both, text and multimodal model
 # python -m main # in another terminal, or run inference server as daemon
-python flet run src/ui/my_ai_ui.py # flutter app
+python -m 
 brew install mactop
 sudo mactop
 ```
@@ -60,8 +60,6 @@ docker-compose ps
 # rest api form vision-indeference with my_ai postprocess
 
 https://pypi.org/project/instructor/
-
-https://code.iaflw.com/2025/02/grounding-results-with-google-search.html
 
 
 https://github.com/AK391/llama-3.2-3b-voice/tree/main
