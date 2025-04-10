@@ -48,6 +48,7 @@ class MyAIUI:
         self.is_my_ai_inistialized: bool = False
         self.is_loading: bool = False
         self.app_ui = None
+        self.enable_agent: bool = False
         self._initialize_my_ai()
         if self.is_my_ai_inistialized:
             self._initialize_app_ui()
@@ -113,14 +114,14 @@ class MyAIUI:
                     )
                     
                     with gr.Row():
-                        msg = gr.Textbox(
+                        self.msg = gr.Textbox(
                             placeholder="Type your message here...",
                             container=False,
                             scale=9,
                             show_label=False,
                             autofocus=True
                         )
-                        submit_btn = gr.Button(
+                        self.submit_btn = gr.Button(
                             "Send",
                             scale=1,
                             variant="primary",
@@ -137,32 +138,45 @@ class MyAIUI:
                         interactive=False,
                         elem_classes=["log_display"],
                     )
+                    with gr.Row():
+                        # Add the enable agent checkbox at the top
+                        self.enable_agent_checkbox = gr.Checkbox(
+                            label="Enable Agent",
+                            value=self.enable_agent,
+                            interactive=True
+                        )
             
             # Event handlers
-            msg.submit(
+            self.msg.submit(
                 fn=self.send_message,
-                inputs=[msg, self.messages],
+                inputs=[self.msg, self.messages],
                 outputs=[self.messages],
                 queue=False
             ).then(
                 fn=lambda: "",  # Clear input box after sending
-                outputs=[msg]
+                outputs=[self.msg]
             ).then(
                 fn=self.logging_manager.get_logs,  # Update logs after message
                 outputs=[self.log_display]
             )
             
-            submit_btn.click(
+            self.submit_btn.click(
                 fn=self.send_message,
-                inputs=[msg, self.messages],
+                inputs=[self.msg, self.messages],
                 outputs=[self.messages],
                 queue=False
             ).then(
                 fn=lambda: "",  # Clear input box after sending
-                outputs=[msg]
+                outputs=[self.msg]
             ).then(
                 fn=self.logging_manager.get_logs,  # Update logs after message
                 outputs=[self.log_display]
+            )
+            # Add checkbox change event handler
+            self.enable_agent_checkbox.change(
+                fn=self.toggle_agent,
+                inputs=[self.enable_agent_checkbox],
+                outputs=None
             )
 
 if __name__ == "__main__":

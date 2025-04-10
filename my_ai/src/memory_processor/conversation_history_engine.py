@@ -1,27 +1,32 @@
 """
 ConversationHistoryEngine
 ------------------------
-A Redis-based conversation history management system that maintains two databases:
-- An optimized live conversation database (DB 0)
-- A complete backup database (DB 1)
+A distributed conversation history management system using Redis and local JSON storage.
 
-Features:
-- Async Redis operations with automatic reconnection
+Key Features:
+- Dual storage system:
+  * Redis DB 0: Optimized live conversation database
+  * Redis DB 1: Complete backup database
+  * Local JSON: File-based backup at conversation_memory.json
+  
+Technical Features:
+- Asynchronous Redis operations with automatic reconnection
 - JSON-based storage with date-wise conversation organization
-- Persistent storage with AOF enabled
-- Support for retrieving recent conversations with customizable time windows
-- Automatic backup system
+- AOF persistence enabled for data durability
+- Configurable time windows for conversation retrieval
+- Automatic backup and synchronization between Redis and JSON
 
-Usage:
+Usage Example:
     engine = ConversationHistoryEngine(config)
     await engine.connect()
     await engine.add_conversation(messages)
     conversations = await engine.get_recent_conversations(days=3)
     await engine.cleanup()
     
-    run test with $ python -m conversation_history_engine
+Testing:
+    Run tests with: $ python -m conversation_history_engine
 
-@author : Asif Ahmed - asif.shuvo2199@outlook.com
+@author: Asif Ahmed <asif.shuvo2199@outlook.com>
 """
 
 from pathlib import Path as ospath
@@ -32,18 +37,26 @@ from datetime import datetime, timedelta
 import logging
 from typing import Dict, List, Optional, Any
 import asyncio
-
+from src.core.api_server.data_models import MessageContent
 from src.config.config import load_config
 
 
 class ConversationHistoryEngine:
     def __init__(self, redis_key: str = "conversations_history"):
         """
-        Initialize the ConversationHistoryEngine with Redis connection settings.
+        Initialize the ConversationHistoryEngine.
         
         Args:
-            config (Dict[str, Any]): Redis configuration dictionary
-            redis_key (str): Key for storing conversations
+            redis_key (str): Key prefix for storing conversations in Redis
+            
+        Note:
+            Configuration is loaded from config file with the following defaults:
+            - Redis host: localhost
+            - Redis port: 6379
+            - Live DB: 0
+            - Backup DB: 1
+            - Config DB: 2
+            - Vector DB: 3
         """
         self.config = load_config()
         self.redis_key = redis_key
@@ -70,10 +83,15 @@ class ConversationHistoryEngine:
     
     async def connect(self) -> None:
         """
-        Establish a connection to the Redis server and initialize the JSON structure.
+        Establish connections to Redis databases and initialize storage.
+        
+        Performs:
+        1. Connects to live, backup, vector, and config Redis DBs
+        2. Enables AOF persistence for data durability
+        3. Initializes JSON structures if they don't exist
         
         Raises:
-            Exception: If Redis connection fails
+            Exception: If Redis connection fails after retry attempts
         """
         for attempt in range(self.retry_attempts):
             try:
@@ -134,8 +152,6 @@ class ConversationHistoryEngine:
                     if not await self.backup_client.exists(self.redis_key):
                         await self.backup_client.json().set(self.redis_key, Path.root_path(), {})
                     
-                    if not await self.backup_client.exists(self.redis_key):
-                        await self.backup_client.json().set(self.redis_key, Path.root_path(), {})
                     return
                 
                 if await self.vector_client.ping():
@@ -154,8 +170,6 @@ class ConversationHistoryEngine:
                     await self.config_client.config_set('appendfsync', 'everysec')
 
                     # Initialize the JSON structure if it doesn't exist
-                    if not await self.config_client.exists(self.config_key):
-                        await self.config_client.json().set(self.config_key, Path.root_path(), {})
                     if not await self.config_client.exists(self.config_key):
                         await self.config_client.json().set(self.config_key, Path.root_path(), {})
                     return
@@ -195,7 +209,30 @@ class ConversationHistoryEngine:
             self.vector_client = None
 
     
-            
+    # TODO: for all the redis gets or updates, or add, do the same for my_ai/src/memory_processor/conversation_memory.json         
+
+    async def _read_json_file(self) -> dict:
+        """Read the conversation history from JSON file"""
+        try:
+            json_path = ospath("my_ai/src/memory_processor/conversation_memory.json")
+            if json_path.exists():
+                with open(json_path, 'r') as f:
+                    return json.load(f)
+            return {}
+        except Exception as e:
+            self.logger.error(f"Error reading JSON file: {str(e)}")
+            return {}
+
+    async def _write_json_file(self, data: dict) -> None:
+        """Write conversation history to JSON file"""
+        try:
+            json_path = ospath("my_ai/src/memory_processor/conversation_memory.json")
+            with open(json_path, 'w') as f:
+                json.dump(data, f, indent=2)
+        except Exception as e:
+            self.logger.error(f"Error writing to JSON file: {str(e)}")
+        
+    
     async def _get_all_data(self) -> Any:
         """Helper method to safely get JSON data from Redis"""
         try:
@@ -208,7 +245,17 @@ class ConversationHistoryEngine:
             return {}, {}
         
     async def _get_json_data(self, path: str) -> Any:
-        """Helper method to safely get JSON data from Redis"""
+        """
+        Retrieve recent conversations within a specified time window.
+        
+        Args:
+            days (int): Number of days to look back (default: 3)
+            limit (int): Maximum number of messages to return (default: 15)
+            
+        Returns:
+            List[Dict[str, Any]]: List of conversations, ordered by date (newest first)
+            Limited to specified number of messages
+        """
         try:
             data = await self.client.json().get(self.redis_key, path)
             backup_data = await self.backup_client.json().get(self.redis_key, path)
@@ -217,7 +264,7 @@ class ConversationHistoryEngine:
             self.logger.error(f"Error getting JSON data for path {path}: {str(e)}")
             return []
 
-    async def get_conversations_by_date(self, date: str) -> List[Dict[str, Any]]:
+    async def get_conversations_by_date(self, date: str) -> List[MessageContent]:
         """
         Get conversations for a specific date.
         
@@ -242,44 +289,56 @@ class ConversationHistoryEngine:
 
     async def ingest_conversation_history(self, conversation_history) -> None:
         await self.client.json().set(self.redis_key, Path.root_path(), conversation_history)
+        await self._write_json_file(conversation_history)
         
-        
-    async def add_conversation_by_date(self, date: str, messages: List[Dict[str, Any]]) -> None:
+    async def add_conversation_by_date(self, date: str, messages:  List[MessageContent]) -> None:
         """
-        Add new messages for a specific date.
-        
-        Args:
-            date (str): Date in format 'dd-mm-yyyy'
-            messages (List[Dict[str, Any]]): List of message dictionaries
-        """
+    Add new messages for a specific date to both Redis and JSON file.
+    
+    Args:
+        date (str): Date in format 'dd-mm-yyyy'
+        messages (List[MessageContent]): List of messages to add
+    """
         try:
+            # Update Redis
             existing, backup_existing = await self._get_json_data(f"$.{date}")
             if not backup_existing or backup_existing == []:
                 await self.backup_client.json().set(self.redis_key, f"$.{date}", messages)
             elif not existing or existing == []:
                 await self.client.json().set(self.redis_key, f"$.{date}", messages)
-            
             else:
                 existing_messages = existing[0] if isinstance(existing, list) and len(existing) == 1 else existing
                 if isinstance(existing_messages, list):
-                    print("existing_messages")
-                    print(existing_messages)
                     existing_messages.extend(messages)
                 await self.client.json().set(self.redis_key, f"$.{date}", existing_messages)
                 await self.backup_client.json().set(self.redis_key, f"$.{date}", existing_messages)
-                
+
+            # Update JSON file
+            json_data = await self._read_json_file()
+            if date not in json_data:
+                json_data[date] = messages
+            else:
+                if isinstance(json_data[date], list):
+                    json_data[date].extend(messages)
+            await self._write_json_file(json_data)
+
         except Exception as e:
             self.logger.error(f"Error adding conversation for date {date}: {str(e)}")
             raise
-
-    async def add_conversation(self, messages: List[Dict[str, Any]]) -> None:
-        """Add new messages to today's conversation history."""
+    
+    async def add_conversation(self, messages: List[MessageContent]) -> None:
+        """
+        Add new messages to today's conversation history.
+        
+        Args:
+            messages (List[MessageContent]): List of messages to add to today's history
+        """
         date = datetime.now().strftime('%d-%m-%Y')
         await self.add_conversation_by_date(date, messages)
 
         
 
-    async def get_recent_conversations(self, days: int = 3, limit: int = 15) -> List[Dict[str, Any]]:
+    async def get_recent_conversations(self, days: int = 3, limit: int = 15) -> List[MessageContent]:
         """
         Get recent conversations within a date range with limit.
         
@@ -301,40 +360,58 @@ class ConversationHistoryEngine:
                 if len(recent_conversations) >= limit:
                     return recent_conversations[:limit]
         return recent_conversations[:limit]
-    
-    async def delete_data_by_date(self, date: str) -> None:
-        """Delete conversations for a specific date."""
-        try:
-            await self.client.json().delete(self.redis_key, f"$.{date}")
-        except Exception as e:
-            self.logger.error(f"Error deleting data for date {date}: {str(e)}")
-            raise
+ 
 
-    async def delete_all(self) -> None:
-        """Delete all conversation history."""
-        try:
-            await self.client.json().delete(self.redis_key)
-            await self.client.json().set(self.redis_key, Path.root_path(), {})
-        except Exception as e:
-            self.logger.error(f"Error deleting all data: {str(e)}")
-            raise
-    
-    async def replace_conversation_history(self, conversation_history: Any) -> None:
-        try:
-            await self.client.json().delete(self.redis_key)
-            await self.client.json().set(self.redis_key, Path.root_path(), conversation_history)
-        except Exception as e:
-            self.logger.error(f"Error deleting all data: {str(e)}")
-            raise
-    
 
+async def delete_data_by_date(self, date: str) -> None:
+    """Delete conversations for a specific date from both Redis and JSON file"""
+    try:
+        await self.client.json().delete(self.redis_key, f"$.{date}")
+        json_data = await self._read_json_file()
+        if date in json_data:
+            del json_data[date]
+            await self._write_json_file(json_data)
+    except Exception as e:
+        self.logger.error(f"Error deleting data for date {date}: {str(e)}")
+        raise
+
+async def delete_all(self) -> None:
+    """Delete all conversation history from both Redis and JSON file"""
+    try:
+        await self.client.json().delete(self.redis_key)
+        await self.client.json().set(self.redis_key, Path.root_path(), {})
+        await self._write_json_file({})
+    except Exception as e:
+        self.logger.error(f"Error deleting all data: {str(e)}")
+        raise
+
+async def replace_conversation_history(self, conversation_history: Any) -> None:
+    """Replace entire conversation history in both Redis and JSON file"""
+    try:
+        await self.client.json().delete(self.redis_key)
+        await self.client.json().set(self.redis_key, Path.root_path(), conversation_history)
+        await self._write_json_file(conversation_history)
+    except Exception as e:
+        self.logger.error(f"Error replacing conversation history: {str(e)}")
+        raise
             
     
 # Run test scenarios for the ConversationHistoryEngine.
 async def tests():
+    """
+    Run comprehensive tests for ConversationHistoryEngine.
     
-    # This function demonstrates basic usage and functionality testing.
+    Test Scenarios:
+    1. Initialize and connect to Redis
+    2. Clean existing test data
+    3. Load and ingest sample conversation history
+    4. Add new conversations
+    5. Retrieve conversations by date
+    6. Test recent conversation retrieval
+    7. Cleanup and connection termination
     
+    Note: Uses test data from test_conversation_history.json
+    """
     try:
         # Test configuration
         config = {
@@ -379,36 +456,36 @@ async def tests():
         print(json.dumps(conversations, indent=2))
         
         messages = [
-            {
-                'role': 'human',
-                'content': 'What is the weather like today?',
-                'timestamp': (datetime.now() - timedelta(minutes=0)).isoformat()
-            },
-            {
-                'role': 'assistant',
-                'content': 'I cannot provide real-time weather information.',
-                'timestamp': (datetime.now() - timedelta(minutes=1)).isoformat()
-            },
-            {
-                'role': 'human',
-                'content': 'Can you recommend a good book to read?',
-                'timestamp': (datetime.now() - timedelta(minutes=2)).isoformat()
-            },
-            {
-                'role': 'assistant',
-                'content': 'Sure, how about "1984" by George Orwell? It’s a classic dystopian novel.',
-                'timestamp': (datetime.now() - timedelta(minutes=3)).isoformat()
-            },
-            {
-                'role': 'human',
-                'content': 'What are some healthy snacks?',
-                'timestamp': (datetime.now() - timedelta(minutes=4)).isoformat()
-            },
-            {
-                'role': 'assistant',
-                'content': 'Some healthy snacks include almonds, carrot sticks, and Greek yogurt.',
-                'timestamp': (datetime.now() - timedelta(minutes=5)).isoformat()
-            }
+            MessageContent(
+                role="human",
+                content="What is the weather like today?",
+                timestamp=datetime.now() - timedelta(minutes=0)
+            ),
+            MessageContent(
+                role="assistant",
+                content="I cannot provide real-time weather information.",
+                timestamp=datetime.now() - timedelta(minutes=1)
+            ),
+            MessageContent(
+                role="human",
+                content="Can you recommend a good book to read?",
+                timestamp=datetime.now() - timedelta(minutes=2)
+            ),
+            MessageContent(
+                role="assistant",
+                content='Sure, how about "1984" by George Orwell? It's a classic dystopian novel.',
+                timestamp=datetime.now() - timedelta(minutes=3)
+            ),
+            MessageContent(
+                role="human",
+                content="What are some healthy snacks?",
+                timestamp=datetime.now() - timedelta(minutes=4)
+            ),
+            MessageContent(
+                role="assistant",
+                content="Some healthy snacks include almonds, carrot sticks, and Greek yogurt.",
+                timestamp=datetime.now() - timedelta(minutes=5)
+            )
         ]
 
         # Test adding conversations

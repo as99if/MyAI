@@ -31,6 +31,10 @@ from langchain.agents import (
     AgentExecutor,
 )
 
+from agno.agent import Agent
+from agno.models.openai import OpenAIChat
+from agno.tools.duckduckgo import DuckDuckGoTools
+
 
 class InferenceProcessor:
     """
@@ -67,7 +71,7 @@ class InferenceProcessor:
             Tool(
                 func=groq_inference,
                 name="Groq Inference",
-                description="Ask Groq for response.",
+                description="Use this tool to invoke chat inference from Groq platform.",
                 args_schema={
                     "message": {
                         "type": "string",
@@ -85,7 +89,7 @@ class InferenceProcessor:
             Tool(
                 func=gemini_inference,
                 name="Gemini Inference",
-                description="Ask Gemini for response.",
+                description="Use this tool to get information from Gemini about current events and topics",
                 args_schema={
                     "message": {
                         "type": "string",
@@ -138,6 +142,16 @@ class InferenceProcessor:
                 n=8,
                 max_completion_tokens=1024,
             )
+            """self.agent = Agent(
+                model=OpenAIChat(
+                    base_url=self.config.get("base_url", "http://localhost:50001"),
+                    id=self.config.get("vlm", "gemma-3-4b-multimodal"),
+                ),
+                tools=[DuckDuckGoTools()],
+                markdown=True
+            )"""
+            
+            
         except Exception as e:
             print("Error initializing LLM or VLM client:", e)
             logging.error(f"Error initializing LLM or VLM client: {e}")
@@ -148,6 +162,7 @@ class InferenceProcessor:
         Initialize LangChain agent with tools and system prompt.
         Sets up agent for tool-augmented responses.
         """
+        # TODO: does not work
         self.logging_manager.add_message("Initiating Tool Call Agent", level="INFO", source="InferenceProcessor")
         
         agent_system_prompt = [
@@ -299,7 +314,8 @@ class InferenceProcessor:
             if if_tool_call:  # trun on with bool / button / checkbox in gui or by llm's self planning
                 if command:
                     # init agent for tool call
-                    print("----------------- tool call inference -----------------")
+                    # TODO: FIX AGENT TOOL CALL
+                    """print("----------------- tool call inference -----------------")
                     self.logging_manager.add_message(f"Tool call inference", level="INFO", source="InferenceProcessor")
                     self._initialize_agent(command)
                     # Run the agent
@@ -316,7 +332,7 @@ class InferenceProcessor:
                     )
                     self.logging_manager.add_message(f"Tool call response: {response}", level="INFO", source="InferenceProcessor")
                     self._clean_agent()
-                    return response
+                    return response"""
 
             print("----------------- basic llm inference -----------------")
             self.logging_manager.add_message(f"LLM inference", level="INFO", source="InferenceProcessor")

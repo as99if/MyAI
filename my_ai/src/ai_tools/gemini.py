@@ -2,6 +2,7 @@ import base64
 import os
 from google import genai
 from google.genai import types
+from src.utils.log_manager import LoggingManager
 from src.core.schemas import ToolCallResponseSchema
 from src.config.config import api_keys
 import pprint
@@ -13,6 +14,11 @@ def gemini_inference(prompt:str) -> ToolCallResponseSchema:
     Returns:
         str: response from the Gemini model.
     """
+    logging_manager = LoggingManager()
+    logging_manager.add_message("Initiating - Gemini tool", level="INFO", source="Gemini")
+    logging_manager.add_message(f"Prompt: {prompt}", level="INFO", source="Gemini")
+    
+    
     client = genai.Client(
         api_key=api_keys.gemini_api_key,
     )
@@ -44,6 +50,8 @@ def gemini_inference(prompt:str) -> ToolCallResponseSchema:
         short_description_of_the_tool="Inference from Gemini AI model with grounding with google search.",
         result=response.candidates[0].content.parts[0].text
     )
+    logging_manager.add_message(f"Response: {response}", level="INFO", source="Gemini")
+    
     return response
 
 if __name__ == "__main__":
