@@ -36,7 +36,7 @@ from src.memory_processor.conversation_history_engine import ConversationHistory
 from src.speech_engine.speech_engine import SpeechEngine
 from src.utils.my_ai_utils import load_prompt
 from src.config.config import load_config
-from src.core.api_server.data_models import ContentSegment, MessageContent
+from src.core.api_server.data_models import ContentSegment, MessageContent, PersonalityProfile
 
 
 class MyAIAssistant:
@@ -51,6 +51,7 @@ class MyAIAssistant:
         
         self.logging_manager = LoggingManager()
         self.logging_manager.add_message("Initiating - MyAIAssistant", level="INFO", source="MyAIAssistant")
+        self._persoality_profile: PersonalityProfile = PersonalityProfile()
         
         self.system_prompts = load_prompt()
         self.config = load_config()
@@ -449,14 +450,18 @@ class MyAIAssistant:
 
         # Set message type
         message.type = "user_message"
-        pprint.pprint(message, indent=4)
+        message.unspoken_message = False
         
-        # Initialize conversation history either from mock or empty list
-        recent_conversation: List[MessageContent] = (
-            self.mock_conversation_history
-            if not self.conversation_history_engine
-            else []
-        )
+        _user_message_text: str = ""
+        if type(message.content[0]) == str:
+            _user_message_text = message.content[0]
+        elif message.content.type == "text":
+            _user_message_text = message.content[0].content
+
+        
+        # pprint.pprint(message, indent=4)
+        
+        
 
         # Create reminder (hidden) messages for thinking process
         available_tools_prompt = ""
@@ -469,25 +474,69 @@ class MyAIAssistant:
                 for tool in self.inference_processor.tools:
                     available_tools_prompt += f"{_i+1}. Name: {tool.name}, Description: {tool.description}\n"
 
-        unspoken_think_prompt = MessageContent(
-            role="user",
-            timestamp=datetime.now().isoformat(),
-            content=self.system_prompts["think_prompt"]
-                + available_tools_prompt
-                + self.system_prompts["error_handling_prompt"]
-                + self.system_prompts["fallback_response_prompt"],
-            type="reminder_to_self_reflect",
-            unspoken_message=True
-        )
-        unspoken_affirmation = MessageContent(
-            role="assistant",
-            timestamp=datetime.now().isoformat(),
-            content="Okay.",  # make random from list
-            type="response",
-            unspoken_message=True
+        # arrange system prompt to be placed at the start of the conversation recent_conversation
+        persoality_profile: str = self._persoality_profile.to_string()
+        # later on an agent will be able to change these persoality_profile variables
+        
+        system_messages = [
+            MessageContent(
+                role="user", # / "system" (based on model)
+                content=f"System Prompt for chat assistant:\n{self.system_prompts['chatbot_system_prompt']}",
+                type="system_message",
+                unspoken_message=True,
+                timestamp=datetime.now().isoformat(),
+            ),
+            MessageContent(
+                role="assistant",
+                content=f"Okay.",
+                type="computer_response",
+                unspoken_message=True,
+                timestamp=datetime.now().isoformat(),
+            ),
+            MessageContent(
+                role="user", # / "system" (based on model)
+                content=f"{self.system_prompts['personlity_prompt']}\nPersonality profile:\n{persoality_profile}\n{self.system_prompts['chatbot_guidelines']}",
+                type="system_message",
+                unspoken_message=True,
+                timestamp=datetime.now().isoformat(),
+            ),
+            MessageContent(
+                role="assistant",
+                content=f"Got it.",
+                type="computer_response",
+                unspoken_message=True,
+                timestamp=datetime.now().isoformat(),
+            ),
+        ]
+        
+        
+        # Initialize conversation history either from mock or empty list
+        recent_conversation: List[MessageContent] = (
+            self.mock_conversation_history
+            if not self.conversation_history_engine
+            else []
         )
         
-
+        
+        # handle relf-reflection with flag and instruction
+        _message: MessageContent = None
+        if is_thinking_process_permitted:
+            _schema = SelfReflectionSchema
+            _message = MessageContent(
+                role="user",
+                timestamp=datetime.now().isoformat(),
+                content= _user_message_text + "\nNow, first Instruction:\n"
+                    + self.system_prompts["think_instruction"] + "\n"
+                    + available_tools_prompt + "\n"
+                    + self.system_prompts["error_handling_instruction"] + "\n"
+                    + self.system_prompts["fallback_response_instruction"],
+                type="reminder_to_self_reflect",
+                unspoken_message=True
+            )
+        else:
+            _schema = None
+            _message = message
+        
         # Handle conversation history if engine exists
         if self.conversation_history_engine:
             try:
@@ -495,16 +544,15 @@ class MyAIAssistant:
                 self.logging_manager.add_message("Fetched recent conversation history", level="INFO", source="MyAIAssistant")
                 if len(recent_conversation) > 0:
                     # Add system messages and user message to conversation
-                    
                     recent_conversation = (
-                            recent_conversation
-                            + [unspoken_think_prompt]
-                            + [unspoken_affirmation]
-                            + [message]
+                            system_messages
+                            + recent_conversation
+                            + [_message]
                     )
+                    
                 # Add user message to history
                 await self._add_message_to_history(
-                    [unspoken_think_prompt, unspoken_affirmation, message]
+                    [_message]
                 )
             except Exception as e:
                 print(f"Error processing recent conversation: {e}")
@@ -515,10 +563,9 @@ class MyAIAssistant:
             # print("-----")
             # print(recent_conversation)
             recent_conversation = (
-                recent_conversation
-                + [unspoken_think_prompt]
-                + [unspoken_affirmation]
-                + [message]
+                system_messages
+                + recent_conversation
+                + [_message]
             )
 
         self.logging_manager.add_message("Formatted system instruction, context messages and user message", level="INFO", source="MyAIAssistant")
@@ -537,7 +584,7 @@ class MyAIAssistant:
             messages=recent_conversation,
             if_vision_inference=is_vision_enabled,
             if_camera_feed=if_camera_feed,
-            # schema=SelfReflectionSchema,
+            schema=_schema,
             if_tool_call=False,
         )
         # check response.content[0] type if SelfReflectionSchema then proceed or retry
@@ -650,7 +697,7 @@ class MyAIAssistant:
                 # Get response after self-reflection
                 proceed_after_thinking_without_tool = MessageContent(
                     role="user",
-                    content=self.system_prompts["proceed_after_thinking_without_tool"],
+                    content=self.system_prompts["proceed_after_thinking_without_tool_instruction"] + f"The actual user message was: {_user_message_text}",
                     timestamp=datetime.now().isoformat(),
                     type="user_message_asking_for_reply_after_thinking",
                     unspoken_message=True

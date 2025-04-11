@@ -146,21 +146,24 @@ stateDiagram-v2
 
 ```mermaid
 flowchart TD
-    Start([Start]) --> InitResponse[Initialize Response]
-    InitResponse --> SetMsgType[Set Message Type to 'user_message']
-    SetMsgType --> InitHistory[Initialize Conversation History]
+    Start([Start]) --> CreateSystemPrompts[Create and Add System Prompts at the start of  Messages]
+
     
-    InitHistory --> CreatePrompts[Create Hidden System Prompts]
-    CreatePrompts --> HasHistoryEngine{Has History Engine?}
+    CreateSystemPrompts --> HasHistoryEngine{Has History Engine?}
     
     HasHistoryEngine -->|Yes| GetRecentConv[Get Recent Conversation]
     HasHistoryEngine -->|No| UseLocalConv[Use Local Conversation]
     
-    GetRecentConv --> AddSystemMsgs[Add Hidden Prompt Messages to Conversation]
-    UseLocalConv --> AddSystemMsgs
-    AddSystemMsgs --> AddUserMsg[Add User Message to Conversation]
+    GetRecentConv --> GotRecentConv[Add to Messages]
+    UseLocalConv --> GotRecentConv[Add to Messages]
+
+    GotRecentConv --> IsSelfRelectionNeeded{is self-reflection asked}
+
+    IsSelfRelectionNeeded -->|Yes| AddSystemMsgs[Add Self Reflection Instruction to User Message, and add that to Messages]
+    IsSelfRelectionNeeded -->|No| AddUserMsg[Add User Message to Messages]
     
-    AddUserMsg --> GenInitialResp[AI response on Self-Reflection or Planning, add to conversation history]
+    AddUserMsg --> PrepareResponse[Generate Final Response]
+    AddSystemMsgs --> GenInitialResp[AI response on Self-Reflection or Planning, add to conversation history]
     
     GenInitialResp --> IsToolCallNeeded{Tool Call<br>Necessary?}
     
@@ -173,7 +176,7 @@ flowchart TD
     SingleToolCall --> PostReflection[Post Tool Call Reflection]
     MultiToolCall --> PostReflection
     
-    PostReflection --> PrepareResponse[Prepare Final Response]
+    PostReflection --> PrepareResponse[Generate Final Response]
     ProceedWithoutTool --> PrepareResponse
     
     PrepareResponse --> IsApiRequest{Is API Request?}

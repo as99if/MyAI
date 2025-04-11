@@ -5,7 +5,7 @@
     "public_api": false,
     "omni_mode": true,
     "base_url": "http://localhost:50001/v1",
-    "llm": "gemma-3-4b-multimodal",
+    "llm": "gemma-3-1b",
     "vlm": "gemma-3-4b-multimodal",
     "google_custom_search_engine_id": "24c143fb02fd94d45",
     "google_custom_search_engine_url": "https://cse.google.com/cse?cx=24c143fb02fd94d45&q=",

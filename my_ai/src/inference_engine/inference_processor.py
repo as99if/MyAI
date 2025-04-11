@@ -258,14 +258,6 @@ class InferenceProcessor:
         
         formatted_messages: list = []
 
-        # Add system message first
-        formatted_messages.append(
-            HumanMessage(
-                content=f"{self.system_prompts['chatbot_system_prompt']} {self.system_prompts['chatbot_guidelines']}"
-            )
-        )
-        formatted_messages.append(AIMessage(content=f"Okay."))
-
         # Format user and assistant messages (from recent and new messages )
         for msg in messages:
             if type(msg.content) is str:
