@@ -105,7 +105,7 @@ class MessageContent(BaseModel):
     """
 
     role: Literal["user", "assistant", "system"]
-    timestamp: datetime
+    timestamp: Optional[datetime] = None
     content: Union[str, List[Union[str, ContentSegment]]]
     type: Optional[str] = None
     unspoken_message: bool = False

@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import Any, List, Optional
 
-class SelfReflectionSchema(BaseModel):
+class SelfReflection(BaseModel):
     self_reflection: str = Field(
         description="AI's response on self reflection or response planning on the current situation and reasoning",
         min_length=10,
@@ -13,7 +13,7 @@ class SelfReflectionSchema(BaseModel):
         example=True
     )
     is_multiple_tool_call_necessary: bool = Field(
-        description="Indicates whether a multiple consicutive tool calls to agent is required to complete the tasks came up in self reflection or planning.",
+        description="Indicates whether the idea of multiple consicutive tool calls by agent is required to complete the tasks came up in self reflection or planning.",
         example=True
     )
     suggested_tools: List[str] = Field(
@@ -21,27 +21,40 @@ class SelfReflectionSchema(BaseModel):
         min_items=1,
         example=["system_monitor", "file_analyzer"]
     )
-    preferable_commands_for_tool_call: Optional[List[str]] = Field(
-        default=None,
-        description="List of probable and specific commands to execute tools on the context. Do not hallucinate.",
-        example=["check_cpu_usage --interval=5", "check_cpu_usage --interval=10","Search on google - What is the current situation on Quantum Computing advancement."]
-    )
 
-class ToolCallResponseSchema(BaseModel):
+
+class ToolCallArgument(BaseModel):
+
+    name: str = Field(description="Name of the selected tool."),
+    arguments: dict = Field(description="Generated argument (parameter) for the tool call in JSON format")
+
+
+class ToolCallGeneration(BaseModel):
+    tool_calls: List[ToolCallArgument] = Field(description="A list of tool name and their argument.")
+
+class ToolCallResponse(BaseModel):
+    execution_id: str
     tool_used: str = Field(
         description="Name of the tool that was used",
-        min_length=1,
-        max_length=100,
         example="system_monitor"
     )
-    short_description_of_the_tool: str = Field(
+    parameters: Any = Field(
+        description="Generated parameters ot the tool call",
+    )
+    description: str = Field(
         description="Brief description of the tool's purpose",
-        min_length=10,
-        max_length=200,
         example="Monitors system resources and performance metrics"
     )
     result: str = Field(
         description="Output or result from the tool execution",
-        min_length=1,
         example="CPU usage: 45%, Memory: 6.2GB used"
+    )
+    
+class AgentResponse(BaseModel):
+    task_id: str = Field(
+        description="An uniqu id for the excecution of task with one or multiple tool calls. The tool call history is saved with this excecution_id as key",
+        default="#"
+    )
+    excecution_list: List[ToolCallResponse] = Field(
+        description="List of tools called for the task with their results",
     )

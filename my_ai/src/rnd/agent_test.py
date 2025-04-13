@@ -1,39 +1,28 @@
-import asyncio
-import pprint
-from agno.agent import Agent
-from agno.models.groq import Groq
-from agno.tools.duckduckgo import DuckDuckGoTools
+from langchain_core.tools import tool
+from langchain_openai import ChatOpenAI
 
-from pydantic import BaseModel, Field
-from src.inference_engine.inference_processor import InferenceProcessor
-from src.ai_tools.gemini import gemini_inference
-from src.ai_tools.groq import groq_inference
-from src.config.config import load_config
-from src.core.schemas import ToolCallResponseSchema
+model = ChatOpenAI(
+            base_url="http://localhost:50001/v1",
+            model_name="gemma-3-1b",  # or overthinker
+            streaming=False,
+            api_key="None",
+            stop_sequences=["<end_of_turn>", "<eos>"],
+            temperature=1.0,
+            # repeat_penalty=1.0,
+            # top_k=64,
+            top_p=0.95,
+            # max_completion_tokens=
+        )
 
 
-# Define schemas for tool arguments
-class GroqInferenceArgs(BaseModel):
-    message: str = Field(
-        default="",
-        description="Prompt to ask groq for response"
-    )
-    is_think_needed: bool = Field(
-        default=True,
-        description="Whether to return thinking steps separately"
-    )
+@tool
+def magic_function(input: int) -> int:
+    """Applies a magic function to an input."""
+    return input + 2
 
-class GeminiInferenceArgs(BaseModel):
-    message: str = Field(
-        default="",
-        description="Prompt to ask gemini for response with google search"
-    )
-    
-class MyAIAgent:
-    def __init__(self):
-        pass
-    
-my_agent = MyAIAgent()
 
-r = asyncio.run(my_agent.agent_inference())
-pprint.pprint(r)
+tools = [magic_function]
+
+
+query = "what is the value of magic_function(3)?"
+

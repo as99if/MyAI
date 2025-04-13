@@ -8,6 +8,7 @@ Uses async operations for better performance and supports context management.
 author: {Asif Ahmed}
 """
 
+import asyncio
 from datetime import datetime
 import pprint
 from typing import Any, List, Optional, Dict
@@ -17,11 +18,8 @@ import aiohttp
 import logging
 from src.utils.log_manager import LoggingManager
 from src.config.config import load_config
-from src.ai_tools.gemini import gemini_inference
 from src.core.api_server.data_models import MessageContent
-from src.core.schemas import ToolCallResponseSchema
-from src.ai_tools.groq import groq_inference
-from src.ai_tools.siri_service import execute_siri_command
+from src.core.schemas import ToolCallResponse
 import requests
 from langchain.schema import HumanMessage, SystemMessage, AIMessage
 from src.utils.my_ai_utils import load_prompt
@@ -67,39 +65,7 @@ class InferenceProcessor:
         self.vlm_name: str = None
         self.llm_inference_client = None
         self.vlm_inference_client = None
-        self.tools = [
-            Tool(
-                func=groq_inference,
-                name="Groq Inference",
-                description="Use this tool to invoke chat inference from Groq platform.",
-                args_schema={
-                    "message": {
-                        "type": "string",
-                        "default": "",
-                        "description": "Prompt to ask gemini for response with google search."
-                    },
-                    "is_think_needed": {
-                        "type": "boolean",
-                        "default": True,
-                        "description": "Whether to return thinking steps separately"
-                    },
-                },
-                return_direct=True
-            ),
-            Tool(
-                func=gemini_inference,
-                name="Gemini Inference",
-                description="Use this tool to get information from Gemini about current events and topics",
-                args_schema={
-                    "message": {
-                        "type": "string",
-                        "default": "",
-                        "description": "Prompt to ask gemini for response with google search."
-                    },
-                },
-                return_direct=True
-            )
-        ]
+        
         self._initialize_llm_client()
         self.logging_manager.add_message("Coleted Initiatiion - InferenceProcessor", level="INFO", source="InferenceProcessor")
         self.logging_manager.add_message(f"LLM: {self.config.get('llm')}\nVLM: {self.config.get('vlm')}", level="INFO", source="InferenceProcessor")
@@ -113,7 +79,7 @@ class InferenceProcessor:
         try:
             # Standard LLM client initialization with optimized parameters
             self.llm_inference_client = ChatOpenAI(
-                base_url=self.config.get("base_url", "http://localhost:50001"),
+                base_url=self.config.get("base_url", "http://localhost:50001/v1"),
                 model_name=self.config.get("llm", "gemma-3-1b"), # or overthinker
                 streaming=False,
                 api_key="None",
@@ -129,7 +95,7 @@ class InferenceProcessor:
 
             # Vision model client initialization
             self.vlm_inference_client = ChatOpenAI(
-                base_url=self.config.get("base_url", "http://localhost:50001"),
+                base_url=self.config.get("base_url", "http://localhost:50001/v1"),
                 model_name=self.config.get("vlm", "gemma-3-4b-multimodal"),
                 streaming=False,
                 api_key="None",
@@ -142,6 +108,7 @@ class InferenceProcessor:
                 n=8,
                 max_completion_tokens=1024,
             )
+            
             """self.agent = Agent(
                 model=OpenAIChat(
                     base_url=self.config.get("base_url", "http://localhost:50001"),
@@ -157,30 +124,7 @@ class InferenceProcessor:
             logging.error(f"Error initializing LLM or VLM client: {e}")
             pass
 
-    def _initialize_agent(self, prompt) -> None:
-        """
-        Initialize LangChain agent with tools and system prompt.
-        Sets up agent for tool-augmented responses.
-        """
-        # TODO: does not work
-        self.logging_manager.add_message("Initiating Tool Call Agent", level="INFO", source="InferenceProcessor")
-        
-        agent_system_prompt = [
-            SystemMessage(
-                content="You are a helpful assistant that can use tools to perform tasks."
-            ),
-            HumanMessage(content=prompt),
-        ]
-
-        self.agent = create_openai_tools_agent(
-            self.llm_inference_client, self.tools, agent_system_prompt
-        )
-        self.agent_executor = AgentExecutor(agent=self.agent, tools=self.tools, verbose=True)
-
-    def _clean_agent(self) -> None:
-        """Clean up agent resources to prevent memory leaks."""
-        del self.agent
-        del self.agent_executor
+    
 
     async def _check_inference_server_health(self) -> bool:
         """
@@ -212,9 +156,6 @@ class InferenceProcessor:
     async def create_chat_completion(
         self,
         messages: List[MessageContent] = [],
-        command: str = None,
-        if_tool_call: bool = False,
-        tool_list: list = None,
         schema: Any = None,
         if_vision_inference: bool = False,
         if_camera_feed: bool = False,
@@ -227,7 +168,7 @@ class InferenceProcessor:
         Args:
             messages (list): Message dictionaries with role and content
             command (str, optional): Command for tool execution
-            if_tool_call (bool): Whether to use tool-augmented completion
+            if_tool_call (bool): Whether to use tool-augmented completion called by agent
             tool_list (list, optional): List of tools to use
             if_vision_inference (bool): Whether to use vision model
 
@@ -287,8 +228,8 @@ class InferenceProcessor:
             print("invoking model")
             self.logging_manager.add_message(f"Invoking model", level="INFO", source="InferenceProcessor")
             # langchain OpenAI like chat_completion API response
-            if if_vision_inference:  # trun on with bool / button / checkbox in gui
-                # vision inference
+            if if_vision_inference:  # run on with bool flag / button / checkbox in gui
+                # vision inference - format message prompt, texts and other contents
                 print("----------------- vlm inference -----------------")
                 self.logging_manager.add_message(f"VLM inference", level="INFO", source="InferenceProcessor")
                 # TODO: format vision content with prompt in my ai assistant 
@@ -302,30 +243,7 @@ class InferenceProcessor:
                 )
                 self.logging_manager.add_message(f"VLM inference response: {response}", level="INFO", source="InferenceProcessor")
                 return response
-
-            if if_tool_call:  # trun on with bool / button / checkbox in gui or by llm's self planning
-                if command:
-                    # init agent for tool call
-                    # TODO: FIX AGENT TOOL CALL
-                    """print("----------------- tool call inference -----------------")
-                    self.logging_manager.add_message(f"Tool call inference", level="INFO", source="InferenceProcessor")
-                    self._initialize_agent(command)
-                    # Run the agent
-                    agent_response = self.agent_executor.invoke()
-
-                    # show a clickable small box as reply - click here to see result (if result is big or smth) (opens a new window or smth)
-                    # if result is small - show there
-                    agent_response: ToolCallResponseSchema = agent_response["output"]
-                    response = MessageContent(
-                        role="assistant",
-                        content=agent_response,
-                        timestamp=datetime.now().isoformat(),
-                        type="tool_call_agent_response"
-                    )
-                    self.logging_manager.add_message(f"Tool call response: {response}", level="INFO", source="InferenceProcessor")
-                    self._clean_agent()
-                    return response"""
-
+            
             print("----------------- basic llm inference -----------------")
             self.logging_manager.add_message(f"LLM inference", level="INFO", source="InferenceProcessor")
             response = await self.llm_inference_client.ainvoke(formatted_messages)
@@ -347,17 +265,16 @@ class InferenceProcessor:
             
 
 
-"""
+
 # Test execution
 if __name__ == "__main__":
     ip = InferenceProcessor()
-    messages = [
-        {
-            "role": "user",
-            "content": "write down one to ten in numbers",
-            "type": "user_message",
-            "timestamp": datetime.now().isoformat(),
-        }
+    messages: List[MessageContent] = [
+        MessageContent(
+            role="user",
+            content="write down one to ten in numbers",
+            type="user_message",
+            timestamp=datetime.now().isoformat(),
+        )
     ]
     asyncio.run(ip.create_chat_completion(messages))
-"""

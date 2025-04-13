@@ -21,8 +21,7 @@ import io
 import keyboard  # Add this import
 import gc
 import threading
-from src.utils.log_manager import LoggingManager
-from src.core.schemas import SelfReflectionSchema
+
 import simpleaudio
 import time
 import signal
@@ -37,7 +36,9 @@ from src.speech_engine.speech_engine import SpeechEngine
 from src.utils.my_ai_utils import load_prompt
 from src.config.config import load_config
 from src.core.api_server.data_models import ContentSegment, MessageContent, PersonalityProfile
-
+from src.core.my_ai_agent import MyAIAgent
+from src.utils.log_manager import LoggingManager
+from src.core.schemas import AgentResponse, SelfReflection
 
 class MyAIAssistant:
 
@@ -47,6 +48,7 @@ class MyAIAssistant:
         speech_engine: SpeechEngine = None,
         conversation_history_engine: ConversationHistoryEngine = None,
         mock_conversation_history: List[MessageContent] = [],
+        my_ai_agent: MyAIAgent = None
     ):  
         
         self.logging_manager = LoggingManager()
@@ -57,9 +59,16 @@ class MyAIAssistant:
         self.config = load_config()
         self.inference_processor = inference_processor
         self.conversation_history_engine = conversation_history_engine
+        
+        if my_ai_agent == None:
+            self.my_ai_agent = MyAIAgent()
+        else:
+            self.my_ai_agent = my_ai_agent
+        
         self.if_gui_enabled = self.config.get("gui_enabled", False)
         self.voice_reply_enabled = self.config.get("voice_reply_enabled", False)
 
+        
         self.speech_engine = speech_engine
         if self.speech_engine is not None:
             self.tts_engine = speech_engine.tts_engine
@@ -404,7 +413,7 @@ class MyAIAssistant:
         """
         self.exit_gracefully()
         
-    async def _add_message_to_history(self, messages: List[MessageContent]) -> None:
+    async def _add_messages_to_history(self, messages: List[MessageContent]) -> None:
         if self.conversation_history_engine:
             try:
                 await self.conversation_history_engine.add_conversation(messages)
@@ -463,21 +472,11 @@ class MyAIAssistant:
         
         
 
-        # Create reminder (hidden) messages for thinking process
-        available_tools_prompt = ""
-        if self.inference_processor is not None:
-            if self.inference_processor.tools is not None and is_tool_call_permitted:
-                self.logging_manager.add_message("Tool call permitted", level="INFO", source="MyAIAssistant")
-                available_tools_prompt = "\nThese are the available tools:\n"
-                # List available tools
-                _i = 0
-                for tool in self.inference_processor.tools:
-                    available_tools_prompt += f"{_i+1}. Name: {tool.name}, Description: {tool.description}\n"
-
         # arrange system prompt to be placed at the start of the conversation recent_conversation
         persoality_profile: str = self._persoality_profile.to_string()
         # later on an agent will be able to change these persoality_profile variables
         
+        # arrange system message
         system_messages = [
             MessageContent(
                 role="user", # / "system" (based on model)
@@ -518,14 +517,29 @@ class MyAIAssistant:
         )
         
         
-        # handle relf-reflection with flag and instruction
+        # handle self-reflection with flag and instruction
         _message: MessageContent = None
+        
+        
+        
+        
         if is_thinking_process_permitted:
-            _schema = SelfReflectionSchema
+            # Create reminder (hidden) messages for thinking process
+            available_tools_prompt = ""
+            if self.inference_processor is not None:
+                if self.my_ai_agent.tools is not None and is_tool_call_permitted:
+                    self.logging_manager.add_message("Tool call permitted", level="INFO", source="MyAIAssistant")
+                    available_tools_prompt = "\nThese are the available tools:\n"
+                    # List available tools
+                    _i = 0
+                    for tool in self.my_ai_agent.tools:
+                        available_tools_prompt += f"{_i+1}. Name: {tool.name}, Description: {tool.description}\n"
+                        
+            _schema = SelfReflection
             _message = MessageContent(
                 role="user",
                 timestamp=datetime.now().isoformat(),
-                content= _user_message_text + "\nNow, first Instruction:\n"
+                content= _user_message_text + "\nInstruction:\n"
                     + self.system_prompts["think_instruction"] + "\n"
                     + available_tools_prompt + "\n"
                     + self.system_prompts["error_handling_instruction"] + "\n"
@@ -534,6 +548,7 @@ class MyAIAssistant:
                 unspoken_message=True
             )
         else:
+            # no self-reflection/planning necessary
             _schema = None
             _message = message
         
@@ -551,7 +566,7 @@ class MyAIAssistant:
                     )
                     
                 # Add user message to history
-                await self._add_message_to_history(
+                await self._add_messages_to_history(
                     [_message]
                 )
             except Exception as e:
@@ -569,6 +584,8 @@ class MyAIAssistant:
             )
 
         self.logging_manager.add_message("Formatted system instruction, context messages and user message", level="INFO", source="MyAIAssistant")
+        
+        # break if no inference processor initialised
         if self.inference_processor is None:
             self.logging_manager.add_message("Inference processor is not initialized", level="ERROR", source="MyAIAssistant")
             return MessageContent(
@@ -587,110 +604,31 @@ class MyAIAssistant:
             schema=_schema,
             if_tool_call=False,
         )
-        # check response.content[0] type if SelfReflectionSchema then proceed or retry
+        # check response.content[0] type if SelfReflection then proceed or retry
         response.type = "self_reflection"
         response.unspoken_message=True
         self.logging_manager.add_message("Thinking process completed", level="INFO", source="MyAIAssistant")
 
         # Add AI response to conversation history
 
-        await self._add_message_to_history([response])
+        await self._add_messages_to_history([response])
         recent_conversation = recent_conversation + [response]
 
         # Handle tool calls if necessary
         try:
-            if is_tool_call_permitted and type(response.content[0]) is not str:
+            # validate response for self_reflection
+            self_reflection_validated = False
+            if is_thinking_process_permitted:
+                self_reflection_validated = SelfReflection.model_validate_json(response.content[0])
+            if is_tool_call_permitted and self_reflection_validated:
                 if response.content[0].tool_call_necessary:
-                    self.logging_manager.add_message("Initiating - Tool Call", level="INFO", source="MyAIAssistant")
-
-                    if not response.content[0].is_multiple_tool_call_necessary:
-                        self.logging_manager.add_message("Not Multiple Tool call.", level="INFO", source="MyAIAssistant")
-                        
-                        _content = f"\nSuggested Tools: {response.content[0].suggested_tools}" + "\nHere is a list of probable command planned for agent to excecute tool call.\n" + response.content[0].preferable_commands_for_tool_call + self.system_prompts["tool_call_prompt"]
-                        
-                        unspoken_tool_call_prompt = MessageContent(
-                                role="user",
-                                content=_content,
-                                timestamp=datetime.now().isoformat(),
-                                type="tool_call_prompt",
-                                unspoken_message=True
-                            )
-                        await self._add_message_to_history([unspoken_tool_call_prompt])
-                        recent_conversation = recent_conversation + [unspoken_tool_call_prompt]
-
-                        # Generate response with tool call
-                        unspoken_agent_response = (
-                            await self.inference_processor.create_chat_completion(
-                                messages=[unspoken_tool_call_prompt],
-                                if_vision_inference=is_vision_enabled,
-                                if_camera_feed=if_camera_feed,
-                                if_tool_call=True,
-                            )
-                        )
-                        unspoken_agent_response.type = "unspoken"
-                        await self._add_message_to_history([unspoken_agent_response])
-                        recent_conversation = recent_conversation + [unspoken_agent_response]
-                    else:
-                        self.logging_manager.add_message("Multiple Tool call.", level="INFO", source="MyAIAssistant")
-                        
-                        # Create and add tool call prompt
-                        unspoken_agent_response: MessageContent = None
-                        for suggested_tool in response.content[0].suggested_tools:
-                            self.logging_manager.add_message(f"Initiating Tool call - {suggested_tool}", level="INFO", source="MyAIAssistant")
-                        
-                            if unspoken_agent_response is None:
-                                _content = f"Tool: {suggested_tool}" + f"\nHere is a list of probable command planned for agent to excecute tool call:\n{response.content[0].preferable_commands_for_tool_call}\n" + self.system_prompts["tool_call_prompt"]
-                            else:
-                                _content = f"Previous Tool Call result:\n{unspoken_agent_response}" + f"\nNext Preffered Tool: {suggested_tool}" + "\nHere is a list of probable command planned for agent to excecute tool call.\n" + response.content[0].preferable_commands_for_tool_call + self.system_prompts["tool_call_prompt"]
-                            
-                            unspoken_tool_call_prompt = MessageContent(
-                                role="user",
-                                content=_content,
-                                timestamp=datetime.now().isoformat(),
-                                type="unspoken",
-                                unspoken_message=True
-                            )
-
-                            await self._add_message_to_history([unspoken_tool_call_prompt])
-                            recent_conversation = recent_conversation + [unspoken_tool_call_prompt]
-
-                            # Generate response with tool call
-                            unspoken_agent_response = (
-                                await self.inference_processor.create_chat_completion(
-                                    messages=[unspoken_tool_call_prompt],
-                                    if_vision_inference=is_vision_enabled,
-                                    if_camera_feed=if_camera_feed,
-                                    if_tool_call=True,
-                                )
-                            )
-                            unspoken_agent_response.type = "agent_response"
-                            unspoken_agent_response.unspoken_message = True
-                            await self._add_message_to_history([unspoken_agent_response])
-                            recent_conversation = recent_conversation + [unspoken_agent_response]
-
-                    # post self reflection for tool call result
-                    self.logging_manager.add_message("Initiating post self reflection for tool call to reply.", level="INFO", source="MyAIAssistant")
-                    unspoken_post_self_replection_prompt = MessageContent(
-                        role="user",
-                        content=self.system_prompts["post_think_prompt"],
-                        timestamp=datetime.now().isoformat(),
-                        type="reminder_to_self_reflect",
-                        unspoken_message=True
-                    )
-
-                    await self._add_message_to_history([unspoken_post_self_replection_prompt])
-                    recent_conversation = recent_conversation + [unspoken_post_self_replection_prompt]
-                    del unspoken_post_self_replection_prompt
-
-                    # Generate response with post thinking on tool call result
-                    response = await self.inference_processor.create_chat_completion(
-                        messages=recent_conversation,
-                        if_vision_inference=is_vision_enabled,
-                        if_camera_feed=if_camera_feed,
-                        if_tool_call=True,
-                    )
-                    self.logging_manager.add_message("Post self reflection from tool call completed", level="INFO", source="MyAIAssistant")
-
+                    self.logging_manager.add_message("Initiating - Agent", level="INFO", source="MyAIAssistant")
+                    
+                    # TODO: check the response properly.. pass the "content" : SelfReflection class only
+                    agent_response = self.my_ai_agent.execute(user_query=_user_message_text, self_reflection=response.content[0])
+                    
+                    recent_conversation = recent_conversation + [agent_response]
+                    await self._add_messages_to_history([agent_response])
             else:
                 self.logging_manager.add_message("No Tool call initiated.", level="INFO", source="MyAIAssistant")
                         
@@ -703,7 +641,7 @@ class MyAIAssistant:
                     unspoken_message=True
                 )
 
-                await self._add_message_to_history(
+                await self._add_messages_to_history(
                     [proceed_after_thinking_without_tool]
                 )
                 recent_conversation = (
@@ -728,7 +666,7 @@ class MyAIAssistant:
         if is_api_request:
             if not is_audio_requested_in_api_response:
                 # Add response to history before returning
-                await self._add_message_to_history([response])
+                await self._add_messages_to_history([response])
                 recent_conversation = recent_conversation + [response]
                 return response, recent_conversation
 
@@ -760,7 +698,7 @@ class MyAIAssistant:
                     type="computer_response_with_audio",
                 )
                 # Add response with audio to history before returning
-                await self._add_message_to_history([response])
+                await self._add_messages_to_history([response])
                 recent_conversation = recent_conversation + [response]
                 return response, recent_conversation
 
@@ -808,8 +746,9 @@ if __name__ == "__main__":
     # Example usage
     # Initialize the assistant with necessary components
     inference_processor = InferenceProcessor()
+    my_ai_agent = MyAIAgent()
     my_ai_assistant = MyAIAssistant(
-        inference_processor=inference_processor,
+        inference_processor=inference_processor, my_ai_agent=my_ai_agent
     )
     response, conversation = asyncio.run(
         my_ai_assistant.process_and_create_chat_generation(
