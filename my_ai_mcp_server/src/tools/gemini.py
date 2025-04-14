@@ -12,7 +12,7 @@ from langchain.tools import Tool
 
 def gemini_inference(prompt:str) -> ToolCallResponse:
     """
-    Processes a given prompt and returns a response based on Gemini's inference capabilities.
+    Processes a given prompt and returns a response based on Gemini's inference capabilities. It can access current events with the added Google Search helper here for grounding information.
     Args:
         prompt (str): A string prompt for the Gemini model to generate a response.
     Returns:

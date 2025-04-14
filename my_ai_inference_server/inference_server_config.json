@@ -3,17 +3,17 @@
     "port": 50001,
     "interrupt_requests": true,
     "api_key": null,
-    "root_path": "/Users/asifahmed/Development/MyAI/inference_server",
+    "root_path": "/Users/asifahmed/Development/MyAI/my_ai_inference_server",
     "models": [
+        {
+            "model": "models/llm/Phi-4-mini-instruct.Q8_0.gguf",
+            "model_alias": "phi4",
+            "n_gpu_layers": -1
+        },
         {
             "model": "models/vlm/gemma-3-4b/gemma-3-4b-it-Q4_K_M.gguf",
             "model_alias": "gemma-3-4b-multimodal",
             "clip_model_path": "/Users/asifahmed/Development/MyAI/models/vlm/gemma-3-4b/mmproj-BF16.gguf",
-            "n_gpu_layers": -1
-        },
-        {
-            "model": "models/llm/gemma-3-1b/gemma-3-1b-it-Q4_K_M.gguf",
-            "model_alias": "gemma-3-1b",
             "n_gpu_layers": -1
         },
         {

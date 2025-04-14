@@ -24,8 +24,7 @@ class SelfReflection(BaseModel):
 
 
 class ToolCallArgument(BaseModel):
-
-    name: str = Field(description="Name of the selected tool."),
+    name: str = Field(description="Name of the selected tool.")
     arguments: dict = Field(description="Generated argument (parameter) for the tool call in JSON format")
 
 

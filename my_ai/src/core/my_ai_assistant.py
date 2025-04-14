@@ -480,7 +480,9 @@ class MyAIAssistant:
         system_messages = [
             MessageContent(
                 role="user", # / "system" (based on model)
-                content=f"System Prompt for chat assistant:\n{self.system_prompts['chatbot_system_prompt']}",
+                content=f"System Prompt for chat assistant:\n{self.system_prompts['chatbot_system_prompt']}" + "\n"
+                    + self.system_prompts["error_handling_instruction"] + "\n"
+                    + self.system_prompts["fallback_response_instruction"],
                 type="system_message",
                 unspoken_message=True,
                 timestamp=datetime.now().isoformat(),
@@ -525,25 +527,17 @@ class MyAIAssistant:
         
         if is_thinking_process_permitted:
             # Create reminder (hidden) messages for thinking process
-            available_tools_prompt = ""
             if self.inference_processor is not None:
                 if self.my_ai_agent.tools is not None and is_tool_call_permitted:
                     self.logging_manager.add_message("Tool call permitted", level="INFO", source="MyAIAssistant")
-                    available_tools_prompt = "\nThese are the available tools:\n"
-                    # List available tools
-                    _i = 0
-                    for tool in self.my_ai_agent.tools:
-                        available_tools_prompt += f"{_i+1}. Name: {tool.name}, Description: {tool.description}\n"
+                    
                         
             _schema = SelfReflection
             _message = MessageContent(
                 role="user",
                 timestamp=datetime.now().isoformat(),
                 content= _user_message_text + "\nInstruction:\n"
-                    + self.system_prompts["think_instruction"] + "\n"
-                    + available_tools_prompt + "\n"
-                    + self.system_prompts["error_handling_instruction"] + "\n"
-                    + self.system_prompts["fallback_response_instruction"],
+                    + self.system_prompts["think_instruction"],
                 type="reminder_to_self_reflect",
                 unspoken_message=True
             )

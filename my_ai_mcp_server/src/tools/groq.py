@@ -11,7 +11,7 @@ from pathlib import Path
 import pprint
 from typing import Any
 from groq import Groq
-from src.core.schemas import ToolCallResponseSchema
+from src.utils.schemas import ToolCallResponseSchema
 from src.config.config import api_keys
 from langchain.tools import Tool
 

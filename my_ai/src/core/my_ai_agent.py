@@ -17,6 +17,9 @@ from mcp.client.sse import sse_client
 from langchain_mcp_adapters.client import MultiServerMCPClient, SSEConnection
 from langchain_mcp_adapters.tools import load_mcp_tools
 from langgraph.prebuilt import create_react_agent
+from groq import Groq
+from src.config.config import api_keys
+from langchain.tools import Tool
 
 
 # migrate to MCP server and clients -_-
@@ -29,7 +32,7 @@ class MyAIAgent:
         self.logging_manager = LoggingManager()
         self.tool_call_inference_client = ChatOpenAI(
             base_url=self.config.get("base_url", "http://localhost:50001/v1"),
-            model_name=self.config.get("llm", "gemma-3-1b"),  # or overthinker
+            model_name=self.config.get("tool_call_lm", "tinyagent"),  # or overthinker
             streaming=False,
             api_key="None",
             stop_sequences=["<end_of_turn>", "<eos>"],
@@ -55,9 +58,9 @@ class MyAIAgent:
     
     async def initialize_mcp_client(self):
         self.my_ai_mcp_server_params = SSEConnection(
-            url="http://localhost:8000/sse", transport="sse"
+            url="http://localhost:50002/sse", transport="sse"
         )
-        async with sse_client(url="http://localhost:8000/sse") as (read, write):
+        async with sse_client(url="http://localhost:50002/sse") as (read, write):
             async with ClientSession(read, write) as session:
                 # Initialize the connection
                 await session.initialize()
@@ -76,22 +79,81 @@ class MyAIAgent:
                 # Get tools
                 self.tools = await load_mcp_tools(session)
                 # print(self.tools)
+                self.available_tools_prompt = "\nThese are the available tools:\n"
+                # List available tools
+                for tool in self.tools:
+                    self.available_tools_prompt += f"** Name: {tool.name}, Description: {tool.description}, Parameter Schema: {tool.args_schema}\n"
 
+    def format_messages(self, messages: List[MessageContent]) -> list:
+        _messages = []
 
-
+        for msg in messages:
+           _messages.append({"role": msg.role, "content": msg.content})
+        return _messages
     
-    async def generate_tool_call_parameters(self, messages: list, tools: list = None, tool_choice: dict = None):
-        # ISSUE: issue in inference... tool call argument generate hocche ne proper structure e.. body te jhamela - prompt eng.
+    
+    async def generate_planning(self, messages: List[MessageContent]) -> MessageContent:
         self.logging_manager.add_message(
-            "Invoking inference server with api call", level="INFO", source="MyAIAgent"
+            "Invoking my_ai_inference server for task runner planning", level="INFO", source="MyAIAgent"
         )
         # Define the API endpoint
-        url = "http://localhost:50001/v1/chat/completions"  # Replace with the actual API endpoint
+        _messages = self.format_messages(messages)
 
+        try:
+            # respond with SelfReflection json schema
+            response = await self.tool_call_inference_client.ainvoke(_messages)
+            self.logging_manager.add_message(
+                "Agent Planning Completed", level="INFO", source="MyAIAgent"
+            )
+            return MessageContent(
+                role="assistant",
+                content=response.content
+            )
+            
+        except requests.exceptions.RequestException as e:
+            print("An error occurred in planning agent's steps:", e)
+            self.logging_manager.add_message(
+                "Error in inference api call", level="INFO", source="MyAIAgent"
+            )
+            raise 
+    
+    async def _groq_inference_for_tool_call(self, messages: List[MessageContent], tools: list = None, if_tool_call: bool = False):
+        self.logging_manager.add_message(
+            "Initiating groq inference server for generating of tool call parameters", level="INFO", source="MyAIAgent"
+        )
+        # Initialize Groq client and perform inference
+        with Groq(api_key=api_keys.groq_api_key) as client:
+            # Create chat completion request
+            chat_completion = client.chat.completions.create(
+                messages=messages,
+                model = "deepseek-r1-distill-llama-70b",
+                temperature=0.8,
+                max_completion_tokens=1024,
+                tools=tools,
+                tool_choice="auto",
+                top_p=0.95,
+                stream=False,
+                stop=None,
+            )
+        
+        # Clean up client
+        if client:
+            del client
+        self.logging_manager.add_message(
+            "Success", level="INFO", source="MyAIAgent"
+        )
+        return chat_completion
+    
+    async def generate_tool_call_parameters(self, messages: list, tools: list = None, tool_choice: dict = None):
+        # ISSUE: slm tool call pare na -_- eta kono kotha?
+        
+        self.logging_manager.add_message(
+            "Initiating generation of tool call parameters", level="INFO", source="MyAIAgent"
+        )
         _tools = []
         _tool_choice = None
     
-        for tool in tools:
+        for tool in self.tools:
             _tool = {
                 "type": "function",
                 "function": {
@@ -108,194 +170,108 @@ class MyAIAgent:
                 if tool_choice == tool["name"]:
                     _tool_choice = tool["name"]
                 
-        pprint.pprint(_tools)
-        _messages = []
-        for msg in messages:
-           _messages.append({"role": msg.role, "content": msg.content})
+        _messages = self.format_messages(messages)
+        response = await self._groq_inference_for_tool_call(messages=_messages, tools=_tools, if_tool_call=True)
         
-        # Define the request body
-        
-        body = {
-            "model": "gemm-3-1b",
-            "messages": _messages,
-            "tools": _tools,
-            
-        }
-        """
-        "tool_choice": {
-                "type": "function",
-                "function": {
-                    "name": _tool_choice
-                }
-            }
-        """
-
-        # Make the API call
-        try:
-            # response = requests.post(url, json=body)
-            self.tool_call_inference_client = self.tool_call_inference_client.with_structured_output(schema=ToolCallGeneration.model_json_schema)
-            
-            
-            response = await self.tool_call_inference_client.invoke(_messages)
-            # Print the response status and content
-            print("--- Response ---")
-            # print("Response JSON:", response.json())
-            print(response)
-            self.logging_manager.add_message(
-                "Got response", level="INFO", source="MyAIAgent"
-            )
-            return response.json()
-            
-        except requests.exceptions.RequestException as e:
-            print("An error occurred:", e)
-            self.logging_manager.add_message(
-                "Error in inference api call", level="INFO", source="MyAIAgent"
-            )
-            raise 
+        self.logging_manager.add_message(
+            "Successfully selected tools and generated parameters for task excecution.", level="INFO", source="MyAIAgent"
+        )
+        return response.choices[0].message.tool_calls
     
     async def execute(
-        self, user_query: str, self_reflection: SelfReflection = None
+        self, user_query: str, task_context: List[MessageContent] = None
     ) -> MessageContent:
 
         self.logging_manager.add_message(
-            "Starting tool excecutions", level="INFO", source="MyAIAgent"
+            "Starting tool excecution process", level="INFO", source="MyAIAgent"
         )
-
-        # response: AgentResponse = AgentResponse(task_id="#", excecution_list=[])  # TODO: short uid
-        tool_call_responses: List[ToolCallResponse] = []
 
         # Create the message structure
         messages = [
             MessageContent(
                 role="user",
-                content=f"You are a helpful AI assistant who can use function/tool calling to exceute a task. You have these function tools to use:\n{self.tools}"
+                content=f"You are a helpful AI agent MyAI Agent, and you can plan to use function/tool calling to exceute a task a query."
             ),
             MessageContent(
                 role="assistant",
-                content="Okay. Tell me you query, and about the tool.",
+                content=f"Okay. Tell me you query, and I will plan steps for tool callings for the task and respond with the tool calling arguments/parameters.",
             ),
             MessageContent(
                 role="user",
-                
-                content=f"This was my original query: {user_query}.\n\nThis is your pre planning thoughts for responding to the task:\n",
-            ),  # + {self_reflection}),
-            MessageContent(
-                role="assistant",
-                content="Got it.",
+                content=f"This is my query: {user_query} to MyAI Agent. These are the available the tools:\n{self.available_tools_prompt}.\nInstruction: " + self.system_prompts["tool_call_planning_instruction"],
             ),
         ]
         args = None
-        if self_reflection is not None:
-            # check if multiple tool call necessary (from self-replection)
-            """if self_reflection.is_multiple_tool_call_necessary:
-                # check suggested tools and execute each one
-                for index, tool in iter(self_reflection.suggested_tools):
+        
+        plnaning_response = await self.generate_planning(messages)
+        # print("\n---PLAN---\n")
+        # pprint.pprint(plnaning_response)
 
-                    # generate arguments for that tool
-                    tool_call_prompt: MessageContent = MessageContent(
-                        role="user",
-                        content=f"Use {tool} for the task at hand based on my query and your planning.",
-                        timestamp=datetime.now().isoformat(),
-                        unspoken_message=True,
-                    )
-                    messages = messages + [tool_call_prompt]
-
-                    _tool = None  # get the tool (Tool) object from tools based on tool.name
-
-                    self.tool_call_inference_client.bind_tools(tool)
-                    generated_tool_call_parameters = await self.tool_call_inference_client.invoke(
-                        messages=messages,
-                        # tools=self.tools,
-                        # tool_choice=_tool  # Specify the tool to use for extracting data
-                    )
-                    args = generated_tool_call_parameters.content  # or smthing
-
-                    try:
-                        # Call a tool
-                        async with sse_client(url="http://localhost:8000/sse") as (read, write):
-                            async with ClientSession(read, write) as session:
-                                tool_result = await session.call_tool(
-                                    "tool-name", arguments=args
-                                )
-                        # Create and run the agent
-                        # self.agent = create_react_agent(
-                        #     model=self.tool_call_inference_client,
-                        #     tool=_tool,
-                        #     response_format=ToolCallResponse
-                        # )
-                        # tool_result: ToolCallResponse = await self.agent.ainvoke({"messages": messages})
-                        self.logging_manager.add_message(
-                            "Successfully excecuted: {tool.name}",
-                            level="INFO",
-                            source="MyAIAgent",
-                        )
-
-                    except Exception as e:
-                        tool_result: ToolCallResponse = ToolCallResponse(
-                            tool_used=tool.name,
-                            description=tool.description,
-                            parameters=args,
-                            result="Failed excecution.",
-                        )
-                        self.logging_manager.add_message(
-                            "Error in tool: {e}", level="INFO", source="MyAIAgent"
-                        )
-
-                    tool_response: AIMessage = AIMessage(
-                        content=tool_result
-                    )
-                    messages = messages + [tool_response]
-                    tool_call_responses.append(tool_result)"""
-
-        else:
-            print("Messages:\n")
-            tool_call_prompt: MessageContent = MessageContent(
+        messages = messages + [plnaning_response]
+        # print("Messages:\n")
+        
+        # schema = json.dumps(ToolCallGeneration.model_json_schema())
+        tool_call_prompt: MessageContent = MessageContent(
                 role="user",
-                content="Select a tool, and use that tool for the task at hand based on my query and your planning.",
-            )
-            _messages = messages + [tool_call_prompt]
-            pprint.pprint(_messages)
-            
-            generated_tool_call_parameters = await self.generate_tool_call_parameters(_messages, tools=self.tools)
-            
-            print(generated_tool_call_parameters)
+                content=f"Now, according to the plan, select one or mutltiple tools for the query and respond with their parameters. Keep reasoning short.",
+        )
+        messages = messages + [tool_call_prompt]
+        # pprint.pprint(_messages)
+        
+        generated_tool_call_parameters = await self.generate_tool_call_parameters(messages)
 
-            args = generated_tool_call_parameters["choices"][0]  # or smthing
-            print(args)
-            
+        
+        pprint.pprint(generated_tool_call_parameters)
+        tool_call_responses: List[ToolCallResponse] = []
+        # generated_tool_call_parameters[0].function.arguments and .name
+        for fn in generated_tool_call_parameters:
+            if fn.type == "function":
+                fn_name = fn.function.name
+                fn_arguments = fn.function.arguments
 
-            return "sss"
             try:
                 # Call a tool
-                async with sse_client(url="http://localhost:8000/sse") as (read, write):
+                self.logging_manager.add_message(
+                    f"Starting tool excecution process for function: {fn_name} with arguments: {fn_arguments}", level="INFO", source="MyAIAgent"
+                )
+                async with sse_client(url="http://localhost:50002/sse") as (read, write):
                     async with ClientSession(read, write) as session:
                         tool_result = await session.call_tool(
-                            "tool-name", arguments=args
+                            fn_name, arguments=fn_arguments
                         )
 
                 print("-----Tool Result-----")
                 pprint.pprint(tool_result)
-
+                tool_call_response: ToolCallResponse = ToolCallResponse(
+                        execution_id="ss",
+                        tool_used=fn_name,
+                        description="",
+                        parameters=fn_arguments,
+                        result=tool_result,
+                    )
+                tool_call_responses.append(tool_call_response)
                 self.logging_manager.add_message(
-                        "Successfully excecuted: tool", level="INFO", source="MyAIAgent"
+                    "Successfully excecuted function: {fn_name}", level="INFO", source="MyAIAgent"
                 )
             except Exception as e:
                 print("-----Failed-----")
-                
+                    
                 self.logging_manager.add_message(
-                    "Error in tool: {e}", level="INFO", source="MyAIAgent"
+                        "Error in tool: {e}", level="INFO", source="MyAIAgent"
                 )
-                tool_result: ToolCallResponse = ToolCallResponse(
-                    execution_id="ss",
-                    tool_used="",
-                    description="",
-                    parameters=args,
-                    result="Failed excecution.",
-                )
+                tool_call_response: ToolCallResponse = ToolCallResponse(
+                        execution_id="ss",
+                        tool_used=fn_name,
+                        description="",
+                        parameters=fn_arguments,
+                        result="Failed excecution.",
+                    )
+                tool_call_responses.append(tool_call_response)
 
-            tool_response: MessageContent = MessageContent(role="assistant", content=str(tool_result))
-            messages = messages + [tool_response]
-            tool_call_responses.append(tool_result)
+                
+
+        overall_tool_excecution: MessageContent = MessageContent(role="assistant", content="Tool Call Excecution: " + str(tool_call_responses))
+        messages = messages + [overall_tool_excecution]
 
         # post self reflection for tool call result
         self.logging_manager.add_message(
@@ -304,7 +280,7 @@ class MyAIAgent:
         unspoken_post_self_reflection_prompt = MessageContent(
             role="user",
             content=f"My original query was: {user_query}\n\n"
-            + self.system_prompts["post_think_instruction"],
+            + self.system_prompts["post_think_instruction"] + "\nAnswer to my query based on the tool call excecution.",
         )
         # add agent task memory to database from MyAIAgent.. TODO: create method and database
         # await self._add_messages_to_agent_task_hostory([agent_task_memory])
@@ -326,6 +302,8 @@ class MyAIAgent:
         return response
 
 
+
 ma = MyAIAgent()
 x = asyncio.run(ma.execute(user_query="What is the current time in Tokyo? Ask Gemini"))
 print(x)
+

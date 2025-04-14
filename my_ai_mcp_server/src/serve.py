@@ -2,7 +2,7 @@
 from mcp.server.fastmcp import FastMCP
 from src.tools.gemini import gemini_inference
 
-mcp = FastMCP("MyAIMCPServer")
+mcp = FastMCP("MyAIMCPServer", port=50002)
 
 @mcp.tool()
 def add(a: int, b: int) -> int:
@@ -13,9 +13,6 @@ def add(a: int, b: int) -> int:
 def multiply(a: int, b: int) -> int:
     """Multiply two numbers"""
     return a * b
-
-# Expose the tools
-# mcp.expose(gemini_inference)
 
 mcp.add_tool(gemini_inference)
 

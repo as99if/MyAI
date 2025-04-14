@@ -17,7 +17,9 @@
 
     "chatbot_guidelines": "Maintain conversation context by referencing recent exchanges. Prioritize extremely concise replies—ideally 2-3 words when possible. Value clarity and brevity above all else.",
     
-    "think_instruction": "Analyze this message internally. Plan your response using simple language and focused reasoning. Consider one or multiple tool call is necessary, and think ahead of how and which tool or tools can be used (No need to plan parameters for tools). Plan to use tool for query on current events or search on the internet. Use bullet points for structuring thoughs or planning.",
+    "think_instruction": "Analyze this message internally. Plan your response using simple language and focused reasoning.  Use bullet points for structuring thoughts, reasoning or planning.",
+
+    "tool_call_planning_instruction" : "Plan ahead if one or multiple tool call is necessary, and think ahead of how and which tools can be used. You are given a list of functions as tools. You do not have to write any code. Just plan how to use one or multiple tools for query or task.",
     
     "proceed_after_thinking_without_tool_instruction": "Based on your analysis, write a brief, clear chat reply to the user message. Keep it fairly short, as a good and informative reply. Try to keep it short to make it a quick reply.",
     
@@ -29,7 +31,7 @@
     
     "error_handling_instruction": "For unclear requests, briefly ask for specific clarification rather than making assumptions.",
     
-    "fallback_response_instruction": "When outside your knowledge scope, simply request clarification rather than providing uncertain information.",
+    "fallback_response_instruction": "When outside your knowledge scope, simply request clarification rather than providing uncertain information. Or ask for using tool call by MyAI agent. If you are ased about current events or such, ask to use tool to retrieve proper information.",
     
     "casual_okay_response": [
       "Okay.",
