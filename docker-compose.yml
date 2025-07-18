@@ -1,7 +1,7 @@
 services:
   inference-server:
     build: 
-      context: inference_server/.
+      context: my_ai_inference_server/.
       dockerfile: Dockerfile.inference_server
     container_name: my-ai-inference-server
     ports:

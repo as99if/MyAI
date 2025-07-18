@@ -21,6 +21,8 @@ class TTSEngine:
                              "./models/speech/voices.bin")
         # download from here - https://github.com/thewh1teagle/kokoro-onnx?tab=readme-ov-file#setup
         
+    # check this out https://github.com/OHF-Voice/piper1-gpl
+    # https://github.com/OHF-Voice/piper1-gpl/blob/main/docs/API_PYTHON.md
 
 class ASREngine:
     def __init__(self):
