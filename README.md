@@ -13,11 +13,23 @@ Used stack:
   
 curl silero models for stt tts and vad
 ```shell
-python3 -m venv .venv
+
+# macos
 brew install portaudio
 brew install ffmpeg
+# fedora
+sudo dnf upgrade --refresh
+sudo dnf install portaudio portaudio-devel
+sudo dnf install ffmpeg-free ffmpeg-free-devel
+
 pip install --upgrade pip
+
+# for each server
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requrements.txt
+
+# start redis server
 make db-run  # for redis dbs
 python -m inference_server.serve # has both, text and multimodal model
 # python -m main # in another terminal, or run inference server as daemon
