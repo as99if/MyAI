@@ -1,0 +1,21 @@
+{
+    "voice_reply_enabled": false,
+    "gui_enabled": false,
+    "api_only": false,
+    "public_api": false,
+    "omni_mode": true,
+    "base_url": "http://localhost:50001/v1",
+    "llm": "gemma-3-4b-multimodal",
+    "tool_call_lm": "overthinker",
+    "enable_object_detection": false,
+    "max_context_messages": 30,
+    "redis_host": "localhost",
+    "redis_port": 6379,
+    "redis_real_time_db": 0,
+    "redis_master_backup_db": 1,
+    "conversation_history_path": "src/memory_processor/conversation_memory.json",
+    "redis_password": null,
+    "chunk_size": 1000,
+    "chunk_overlap": 200,
+    "vector_dim": 1536
+}

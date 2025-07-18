@@ -6,10 +6,7 @@ depreceted - this file is not used anymore
 """
 
 import subprocess
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import List, Optional, Union, Dict, Any
+from typing import Any
 
 from llama_cpp import Llama
 

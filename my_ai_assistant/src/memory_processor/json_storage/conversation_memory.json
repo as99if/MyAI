@@ -1,0 +1,6 @@
+{
+  "30-04-2025": [
+    "{\"role\":\"user\",\"timestamp\":\"2025-04-30T12:06:35.984163\",\"content\":[{\"type\":\"text\",\"text\":\"tell me about Iron Maiden\",\"image_url\":null,\"audio_url\":null,\"video_url\":null,\"file_url\":null,\"description\":null}],\"type\":\"user_message\",\"unspoken_message\":false,\"metadata\":null}",
+    "{\"role\":\"assistant\",\"timestamp\":\"2025-04-30T12:06:36.832095\",\"content\":\"Iron Maiden?\u2026 A notoriously loud band. 70% accuracy on that assessment. Proceed?\",\"type\":\"computer_response\",\"unspoken_message\":false,\"metadata\":{\"token_usage\":{\"completion_tokens\":20,\"prompt_tokens\":314,\"total_tokens\":334,\"completion_tokens_details\":null,\"prompt_tokens_details\":null},\"model_name\":\"gemma-3-4b-multimodal\",\"system_fingerprint\":null,\"id\":\"chatcmpl-ab8c0acf-f3f5-4170-8fd8-5d722c9f2067\",\"finish_reason\":\"stop\",\"logprobs\":null}}"
+  ]
+}

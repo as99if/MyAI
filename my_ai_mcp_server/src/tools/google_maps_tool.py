@@ -1,7 +1,6 @@
+## https://github.com/modelcontextprotocol/servers/tree/main/src/google-maps ## use this  docker mcp server, it's built on ts
 
-"""_summary_
 
-- custom_search_agent
 """
 from asyncio import sleep
 
@@ -117,4 +116,4 @@ def test_maps(location):
 
 location = "Eiffel Tower, Paris"
 test_maps(location)
-embed_maps(location)
+embed_maps(location)"""

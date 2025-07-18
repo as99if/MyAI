@@ -2,23 +2,10 @@
 
 import requests
 from langchain.tools import Tool
-from src.core.schemas import ToolCallResponse
+from src.utils.schemas import ToolCallResponse
 
-tool_get_current_time: Tool = Tool(
-    name="get_current_time",
-    description="Fetches the current time for a given location using the World Time API.",
-    parameters={
-        "type": "object",
-        "properties": {
-            "location": {
-                "type": "string",
-                "description": "The name of the location for which the current time is asked."
-            }
-        },
-        "required": ["location"]
-    }
-)
-def get_current_time(location: str) -> str:
+
+def get_current_time(location: str) -> ToolCallResponse:
     """
     Fetches the current time for a given location using the World Time API.
     Args:
@@ -39,7 +26,7 @@ def get_current_time(location: str) -> str:
  
         return ToolCallResponse(
             tool_used="get_current_time",
-            description="Fetches the current time for a given location using the World Time API."
+            description="Fetches the current time for a given location using the World Time API.",
             result=f"The current time in {location} is {current_time}."
         )
 
@@ -47,23 +34,10 @@ def get_current_time(location: str) -> str:
         return f"Error fetching time data: {str(e)}"
 
 
-tool_search_wikipedia: Tool = Tool(
-    name="search_wikipedia",
-    description="Fetches a summary of a Wikipedia page for a given query.",
-    parameters={
-        "type": "object",
-        "properties": {
-            "query": {
-                "type": "string",
-                "description": "The search term to look up on Wikipedia.."
-            }
-        },
-        "required": ["query"]
-    }
-)
-def search_wikipedia(query: str) -> str:
+
+def search_wikipedia(query: str) -> ToolCallResponse:
     """
-    Fetches a summary of a Wikipedia page for a given query.
+    Fetches a summary from a Wikipedia page for a given query.
     Args:
         query: The search term to look up on Wikipedia.
     Returns:
@@ -80,8 +54,8 @@ def search_wikipedia(query: str) -> str:
         data = response.json()
 
         return ToolCallResponse(
-                tool_used="get_current_time",
-                description="Fetches the current time for a given location using the World Time API."
+                tool_used="search_wikipedia",
+                description="Fetches a summary of a Wikipedia page for a given query.",
                 result=f"Summary for {data["title"]}: {data["extract"]}"
             )
 

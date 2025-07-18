@@ -1,6 +1,6 @@
 import base64
 import os
-from google import genai
+# pip install google-genai
 from google.genai import types
 from pydantic import BaseModel
 from src.utils.log_manager import LoggingManager

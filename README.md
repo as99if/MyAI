@@ -1,6 +1,11 @@
 
 MyAI
 
+
+video - https://www.gradio.app/docs
+audio -. https://www.gradio.app/guides/conversational-chatbot
+
+
 Lightweight local AI voice assistant with multiple functionalities, targetted for edge devices or macos.
 Omni like software (eh?) - but with multiple LLM/VLM, ASR, TTS and Object detection models, with long term and short term memory etc.
 
@@ -12,66 +17,23 @@ Used stack:
 
   
 curl silero models for stt tts and vad
-
-#### install pre-requisits
 ```shell
-
-# macos
+python3 -m venv .venv
 brew install portaudio
 brew install ffmpeg
+
 # fedora
-sudo dnf upgrade --refresh
 sudo dnf install portaudio portaudio-devel
-sudo dnf install ffmpeg-free ffmpeg-free-devel
-```
+sudo dnf install portaudio ffmpeg
 
-#### development
-
-```shell
-# start redis server
-
-# for each server - install dependencies
-python3 -m venv .venv
-source .venv/bin/activate
 pip install --upgrade pip
 pip install -r requrements.txt
-
-
-# start my_ai_inference_server
-python -m serve
-# start my_ai
-python -m main # in another terminal, or run inference server as daemon
-# start my_ai_mcp_server
-python -m src.serve
-```
-
-
-#### OR Run servers with docker
-```shell
-# start docker desktop or from cli
-# fedora
-sudo systemctl enable docker
-sudo systemctl status docker
-
-# Run all servers with docker compose
-chmod +x run_docker_compose_with_logs.sh
-./run_docker_compose_with_logs.sh
-
-docker-compose build
-docker-compose up
-docker-compose logs -f
-docker-compose down
-docker-compose ps
-
-
-
-# monitor device
-# macos
+make db-run  # for redis dbs
+python -m inference_server.serve # has both, text and multimodal model
+# python -m main # in another terminal, or run inference server as daemon
+python -m 
 brew install mactop
 sudo mactop
-# fedora
-# open System Monitor
-
 ```
 
 Run tests
@@ -90,6 +52,17 @@ CMAKE_ARGS="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS -DGGML_METAL=on" \
 ```
 
 
+#### Run server in docker compose
+```shell
+chmod +x run_docker_compose_with_logs.sh
+./run_docker_compose_with_logs.sh
+```
+
+docker-compose build
+docker-compose up
+docker-compose logs -f
+docker-compose down
+docker-compose ps
 
 
 # python flet or smth. to create flutter app

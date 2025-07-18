@@ -50,3 +50,6 @@ class AgentResponse(BaseModel):
     excecution_list: List[ToolCallResponse] = Field(
         description="List of tools called for the task with their results",
     )
+
+class AgentTask:
+    pass

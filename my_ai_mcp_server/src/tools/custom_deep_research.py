@@ -23,6 +23,7 @@ def custom_deep_research_by_planning(query: str, task_memory_messages: list = []
         model="deepseek-coder",
         task_memory_messages=task_memory_messages
     )
+    # TODO: change it to mistral inference
 
     # Step 2: Execute Search Queries
     search_results = []
@@ -51,6 +52,8 @@ def custom_deep_research_by_planning(query: str, task_memory_messages: list = []
         model="deepseek-coder",
         task_memory_messages=[research_plan] + task_memory_messages
     )
+    # TODO: change it to mistral inference
+
 
     # Step 4: Generate Conclusions
     conclusion_system_prompt = """You are a research synthesizer.

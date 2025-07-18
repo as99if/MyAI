@@ -11,7 +11,7 @@ from pathlib import Path
 import pprint
 from typing import Any
 from groq import Groq
-from src.utils.schemas import ToolCallResponseSchema
+from src.utils.schemas import ToolCallResponse
 from src.config.config import api_keys
 from langchain.tools import Tool
 
@@ -23,13 +23,12 @@ def groq_inference(
     max_completion_tokens: int = 4096, 
     is_think_needed: bool = True,
     task_memory_messages: list[Any] = []
-) -> ToolCallResponseSchema:
+) -> ToolCallResponse:
     """
     Performs inference using the Groq API with support for conversation memory and thinking steps.
     
     Args:
         message (str): The user's input message to process
-        system_message (str): The system prompt that defines the AI's behavior
         api_key (str): Groq API authentication key
         temperature (int, optional): Controls randomness in the response. Defaults to 0.8
         max_completion_tokens (int, optional): Maximum tokens in the response. Defaults to 4096
@@ -106,64 +105,23 @@ def groq_inference(
                 "response" : rest_content
             }
             response_text, chat_completion.model
-            return ToolCallResponseSchema(
+            return ToolCallResponse(
                 tool_used="Groq Inference",
                 short_description_of_the_tool=f"Inference from Groq AI platform, model: {chat_completion.model}.",
                 result=response_text
             ) 
         else:
-            return ToolCallResponseSchema(
+            return ToolCallResponse(
                 tool_used="Groq Inference",
                 short_description_of_the_tool=f"Inference from Groq AI platform, model: {chat_completion.model}.",
                 result=rest_content
             ) 
     else:
-        return ToolCallResponseSchema(
+        return ToolCallResponse(
             tool_used="Groq Inference",
             short_description_of_the_tool=f"Inference from Groq AI platform, model: {chat_completion.model}.",
             result=response_text
         )    
-
-tool_groq: Tool = Tool(
-    name="groq_inference",
-    func=groq_inference,
-    description="Performs inference on a given message using specific parameters. Returns a tuple containing the result and reasoning.",
-    parameters={
-        "type": "object",
-        "properties": {
-            "message": {
-                "type": "string",
-                "description": "The input message to process."
-            },
-            "temperature": {
-                "type": "number",
-                "description": "Controls randomness in output generation. Higher values produce more random outputs.",
-                "default": 0.8
-            },
-            "max_completion_tokens": {
-                "type": "integer",
-                "description": "The maximum number of tokens to generate in the completion.",
-                "default": 4096
-            },
-            "is_think_needed": {
-                "type": "boolean",
-                "description": "Indicates whether reasoning or 'thinking' is required for the task.",
-                "default": True
-            },
-            "task_memory_messages": {
-                "type": "array",
-                "items": {
-                    "type": "object"
-                },
-                "description": (
-                    "A list of prior messages or context objects relevant to the task."
-                ),
-                "default": []
-            }
-        },
-        "required": ["message"]
-    }
-)
 
 
 

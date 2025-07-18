@@ -1,4 +1,22 @@
 services:
+
+  # redis-server:
+  #   image: redis/redis-stack:latest
+  #   container_name: redis-json
+  #   ports:
+  #     - "6379:6379"      # Redis port
+  #     - "8001:8001"      # RedisInsight web interface
+  #   volumes:
+  #     - redis_data:/data
+  #   command: redis-stack-server --appendonly yes --appendfsync everysec
+  #   #    networks:
+  #   #  - myai-network
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 3
   inference-server:
     build: 
       context: my_ai_inference_server/.
@@ -9,9 +27,9 @@ services:
     volumes:
       - .inference_server/models:/app/models
       - .inference_server/inference_server_config.json:/app/inference_server_config.json
+    env_file:
+      - .env
     environment:
-      - MODEL_PATH=/app/models/llm/gemma-3-1b/gemma-3-1b-it-BF16.gguf
-      - CONFIG_PATH=/app/inference_server_config.json
       - PYTHONUNBUFFERED=1
     deploy:
       resources:
@@ -31,24 +49,14 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+  mcp-server:
+    build: my_ai_mcp_server/.
+    dockerfile: Dockerfile.mcp_server
+    ports:
+      - "50002:50002"
+    env_file:
+      - .env
   
-  # redis-server:
-  #   image: redis/redis-stack:latest
-  #   container_name: redis-json
-  #   ports:
-  #     - "6379:6379"      # Redis port
-  #     - "8001:8001"      # RedisInsight web interface
-  #   volumes:
-  #     - redis_data:/data
-  #   command: redis-stack-server --appendonly yes --appendfsync everysec
-  #   #    networks:
-  #   #  - myai-network
-  #   restart: unless-stopped
-  #   healthcheck:
-  #     test: ["CMD", "redis-cli", "ping"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 3
 
 volumes:
   redis_data:

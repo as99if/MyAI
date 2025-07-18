@@ -10,10 +10,12 @@ import webbrowser
 import markdown
 import requests
 import random
+from src.tools import mistral_inference
 from src.tools.groq import groq_inference
 from src.tools.ms_markitdown import generate_markdown_crawled_and_summarize
 # from src.core.core_utils import display_notification_with_button
-from my_ai.src.utils.my_ai_utils import load_config, split_list
+from src.config.config import load_config
+from src.utils.utils import split_list
 from urllib.parse import urlencode
 import tracemalloc
 from src.config.config import api_keys
@@ -21,6 +23,8 @@ from src.config.config import api_keys
 # TODO: manage keys and ids vars from config and env
 
 def embed_search_result(query: str):
+    """helper function for custom_deeper_google_research_tool"""
+    
     from urllib.parse import quote_plus
     # Encode the search query
     config = load_config()
@@ -33,8 +37,10 @@ def embed_search_result(query: str):
     return
 
 
-def google_custom_search(query, api_keys.google_custom_search_api_key, google_custom_search_engine_id, num_results=10) -> dict:
+def google_custom_search(query, num_results=10) -> dict:
     """
+    helper function for custom_deeper_google_research_tool
+
     Performs a search using the Google Custom Search JSON API.
 
     Args:
@@ -46,12 +52,13 @@ def google_custom_search(query, api_keys.google_custom_search_api_key, google_cu
     Returns:
         list: A list of search result dictionaries, or None if there's an error.
     """
+    config=load_config()
 
     base_url = "https://www.googleapis.com/customsearch/v1"
     params = {
         "q": query,
-        "key": google_custom_search_api_key,
-        "cx": google_custom_search_engine_id,
+        "key": api_keys.google_custom_search_api_key,
+        "cx": config.google_custom_search_engine_id,
         "num": num_results,
     }
     params = urlencode(params)
@@ -82,6 +89,7 @@ def google_custom_search(query, api_keys.google_custom_search_api_key, google_cu
 
 def skeem_search_results(query, snippets, n: int = 10) -> list[dict]:
     """
+    helper function for custom_deeper_google_research_tool
     - Take first n links from search results
     - Get remaining links after n
     - Randomly select 3 from remaining if available
@@ -191,7 +199,7 @@ markdown_response = """
         ## Sample
     """
 
-def custom_deeper_google_research_tool(query, google_custom_search_api_key, google_custom_search_engine_id, llm, llm_client_api_key) -> dict:
+def custom_deeper_google_research_tool(query, llm, llm_client_api_key) -> dict:
     """
     Ask the internet
     # google custom search
@@ -203,6 +211,7 @@ def custom_deeper_google_research_tool(query, google_custom_search_api_key, goog
     Returns:
         str:
     """
+    config = load_config()
     planner_memory = []
     
     system_prompt = "You are a helpful AI assistant. You are given a list of reponses content from your research. Write a summary of the given information. Extract the most useful information first. There could be bullte points, lists, tables, etc. Put the most relevant information first. Put links as reference in text if necessary."
@@ -211,20 +220,21 @@ def custom_deeper_google_research_tool(query, google_custom_search_api_key, goog
     prompt_ds = f"You have Think or create the steps to research deeply on the topic - {query}"
     prompt_ds_ = {
             "role": f"assistant",
-            "type": "groq_research_planning_request", 
+            "type": "mistral_research_planning_request", 
             "content": prompt_ds,
             "timestamp": datetime.now().isoformat()
         }
     planner_memory.append(prompt_ds_)
     # TODO add this to  backup memory
     
-    response, model = groq_inference(
-            message=prompt_ds_, api_key=llm_client_api_key, system_message=system_prompt, task_memory_messages=[])
+    response, model = mistral_inference(
+            message=prompt_ds_, system_message=system_prompt, task_memory_messages=[])
+
     response_ds = {
         "query": query,
-        "role": f"groq_assistant-{model}",
+        "role": f"mistral-ai-{model}",
         "content": response,
-        "type": "groq_research_planner_response",
+        "type": "mistral_research_planner_response",
         "timestamp": datetime.now().isoformat()
     }
     planner_memory.append(response_ds)
@@ -234,7 +244,7 @@ def custom_deeper_google_research_tool(query, google_custom_search_api_key, goog
     response = None
     print("searching google")
     search_results = google_custom_search(
-        query, google_custom_search_api_key, google_custom_search_engine_id)
+        query, api_keys.google_custom_search_api_key, config.google_custom_search_engine_id)
     # Get all links
     snippets = list(map(lambda item: {
                     "title": item['title'], "link": item['link'], "snippet": item['snippet']}, search_results))
@@ -259,23 +269,23 @@ def custom_deeper_google_research_tool(query, google_custom_search_api_key, goog
     # TODO to add all inference call in memeory
     for i, sublist_of_skeemed_search_results in enumerate(split_lists_of_skeemed_search_results):
         print(f"Researhing Sublist {i+1}")
-        # groq inference for each part
-        # on conclusive groq inference again with all the parts as context
+        # mistral inference for each part
+        # on conclusive mistral inference again with all the parts as context
         system_prompt = "You are a helpful AI assistant. You are given a google search query and the search results. You need to create a research result, which will be the summary of the given information. Extract the most useful information first. There could be bullte points, lists, tables, etc. Put the most relevant information first. Put links as reference in text if necessary."
         prompt = f"Google search query: {str(query)},\nGoogle search result:\n{json.dumps(sublist_of_skeemed_search_results)}\n\nCreate a research result response from the given information. Put the most relevant information first. Put links as reference in text if necessary."
         prompt_ = {
             "role": f"assistant",
-            "type": "groq_google_research_request", 
+            "type": "mistral_google_research_request", 
             "content": prompt,
             "timestamp": datetime.now().isoformat()
         }
         # TODO: save prompt_ to  backup memory 
         task_memory.append(prompt_)
-        response, model = groq_inference(
-            message=prompt, model=llm, api_key=llm_client_api_key, system_message=system_prompt)
+        response, model = mistral_inference(
+            message=prompt, system_message=system_prompt)
 
         response = {
-            "role": f"groq_assistant-{model}",
+            "role": f"mistral_ai-{model}",
             "inference_index": i+1,
             "type": "search_result_summary", 
             "content": response,
@@ -288,13 +298,13 @@ def custom_deeper_google_research_tool(query, google_custom_search_api_key, goog
         split_responses.append(response)
         time.sleep(60)
     
-    print(f"researhing {n} parts finished, requesting conclusive response from groq")
+    print(f"researhing {n} parts finished, requesting conclusive response from mistral ai")
     
     system_prompt = "You are a helpful AI assistant. You are given a list of reponses content from your research. Write a summary of the given information, in markdown format. Extract the most useful information first. There could be bullte points, lists, tables, etc. Put the most relevant information first. Put links as reference in text if necessary."
     prompt = f"Google search query: {str(query)},\nNumber of inference in research:{len(sublist_of_skeemed_search_results)}\nResearch result:\n{json.dumps(split_responses)}\n\nCreate a research result from the given information in Markdown format. Put the most relevant information first. Put links as reference in text if necessary. Be concise and give small reply. Do not write too much text."
     
-    response, model = groq_inference(
-            message=prompt, model=llm, api_key=llm_client_api_key, system_message=system_prompt, task_memory_messages=planner_memory)
+    response, model = mistral_inference(
+            message=prompt, system_message=system_prompt, task_memory_messages=planner_memory)
     markdown_response = f"""
        {str(response)}
     """
@@ -303,17 +313,17 @@ def custom_deeper_google_research_tool(query, google_custom_search_api_key, goog
     del split_responses
     del split_lists_of_skeemed_search_results
     del skeemed_search_results
-    print(f"got response from groq")
+    print(f"got response from mistral ai")
     
     # TODO: add this to backup memory
     
     result = {
         "query": query,
-        "resurch_llm_api": "groq",
+        "resurch_llm_api": "mistral-ai",
         "crawler": "ms_markitdown",
         "content": response,
-        "role": f"groq_assistant-{model}",
-        "type": "groq_google_research_response",
+        "role": f"mistral_ai-{model}",
+        "type": "mistral_google_research_response",
         "visited_links": visited_links,     # TODO: issue, getting []
         "crawl_blocked_links": blocked_links,       # TODO: check
         "timestamp": datetime.now().isoformat()
@@ -323,7 +333,7 @@ def custom_deeper_google_research_tool(query, google_custom_search_api_key, goog
     
     # notification
     # display_notification_with_button(
-    #     title="Groq-Google Research Completed",
+    #     title="Mistral-Google Research Completed",
     #     subtitle=query,
     #     message="Google research details stored in memory."
     #     buttons=[
@@ -359,7 +369,8 @@ def embed_markdown_to_browser(markdown_string=markdown_response, browser='defaul
 # test
 
 
-"""def test_google_custom_search():
+"""
+def test_google_custom_search():
     config = load_config()
     query = "what is the current temparature of Stuttgart?"
     api_key = api_keys.google_custom_search_api_key
@@ -367,32 +378,17 @@ def embed_markdown_to_browser(markdown_string=markdown_response, browser='defaul
     items = google_custom_search(query=query, google_custom_search_api_key=api_key, google_custom_search_engine_id=custom_search_engine_id)
     pprint.pprint(items, indent=2)
 
-test_google_custom_search()"""
+test_google_custom_search()
+"""
 
 # test
 
 
 """
-def test_custom_deeper_google_research_agent():
-    print("starting test")
-    config = load_config()
-    query = "What are the current states of quantum computing research in the world?"
-    api_key = api_keys.google_custom_search_api_key
-    custom_search_engine_id = config.get("google_custom_search_engine_id")
-    result = custom_deeper_google_research_agent(
-        query=query,
-        google_custom_search_api_key=api_key,
-        google_custom_search_engine_id=custom_search_engine_id,
-        llm=config.get("groq_model_name"),
-        llm_client_api_key=api_keys.groq_api_key
-        )
-    print("ustom_deeper_google_research_agent response: ", str(result))
-    del result
-
 
 start_time = time.time()
 tracemalloc.start()
-test_custom_deeper_google_research_agent()
+test_google_custom_search()
 end_time = time.time() 
 # Calculate propagation delay
 propagation_delay = end_time - start_time
