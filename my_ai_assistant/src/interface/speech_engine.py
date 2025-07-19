@@ -20,7 +20,7 @@ from piper import PiperVoice, SynthesisConfig
     
 
 class TTSEngine:
-    def __init__(self, model_path="/home/asifahmedshuvo/Development/MyAI/my_ai_assistant/models/speech/en_GB-semaine-medium.onnx"):
+    def __init__(self, model_path="/home/asifahmedshuvo/Development/MyAI/my_ai_assistant/models/speech/en_GB-semaine-medium.onnx", screen=None):
         self.voice = PiperVoice.load(model_path)
         self.syn_config = SynthesisConfig(
             volume=0.5,
@@ -30,7 +30,7 @@ class TTSEngine:
             normalize_audio=False,
         )
         # Visualization parameters
-        self.screen = None
+        self.screen = screen
         self.screen_width = 1800
         self.screen_height = 700
         self.bg_color = (10, 10, 10)
@@ -51,9 +51,11 @@ class TTSEngine:
             pygame.display.set_caption("🎵 LED Spectrum Analyzer 🎵")
             self.screen.fill(self.bg_color)
             pygame.display.flip()
-            # draw initial background with unlid led's on thebars 
         else:
             self.screen.fill(self.bg_color)
+    
+    def set_screen(self, screen):
+        self.screen = screen
     
     def get_screen(self):
         if self.screen is None:
@@ -67,7 +69,17 @@ class TTSEngine:
         audio_buffer.seek(0)
         return audio_buffer
 
-    def play_synthesized_audio_with_led_visualizer(self, text):
+    def play_synthesized_audio_with_led_visualizer(self, text) -> tuple:
+        """
+        Play synthesized audio with LED visualizer and interruption support. 
+        Audio is synthesized in this methodfrom the given text and visualized in real-time using a spectrum analyzer with LED bars.
+
+        Args:
+            text (str): Text to be synthesized and visualized.
+
+        Returns:
+            tuple (str, str): A tuple containing the spoken and unspoken parts of the text.
+        """
         
         audio_buffer = self.synthesize(text)
         with wave.open(audio_buffer, "rb") as wav_file:
@@ -376,98 +388,14 @@ class SpeechEngine:
         self.asr_engine = ASREngine()
 
 
-# def test(tts, asr):
+def test_tts():
+    tts_engine = TTSEngine()
+    # tts_engine.init_screen()
+    time.sleep(1)
+    print('🎵 Starting LED Spectrum Analyzer with interruption support...')
+    print('Press SPACEBAR to interrupt playback')
+    text = "Welcome to the world of speech synthesis! This is a demonstration of text-to-speech with a real-time audio visualizer. You can press the spacebar at any time to interrupt the playback."
+    # spoken, unspoken = tts_engine.play_synthesized_audio_without_led_visualizer(text)
 
-#     # Test 1: TTS - Different voices and speeds
-#     test_texts = {
-#         "normal": "I've seen angels fall from blinding heights. But you yourself are nothing so divine. Just line",
-#         "question": "You can't deny the prize it may never fulfill you. It longs to kill you, are you willing to die?",
-#         "excited": "Until that day. Until the world falls away. Until you say there'll be no more goodbyes. I see it in your eyes Tomorrow never dies!",
-#     }
-    
-#     for test_name, text in test_texts.items():
-#         # Test different speeds
-#         for speed in [0.8, 1.0, 1.2]:
-#             samples, sample_rate = tts.engine.create(
-#                 text,
-#                 voice="am_adam",
-#                 speed=speed,
-#                 lang="en-us"
-#             )
-#             sf.write(f"test_{test_name}_speed_{speed}.wav", samples, sample_rate)
-#             print(f"Created test_{test_name}_speed_{speed}.wav")
-
-#     # Test 2: TTS - Different languages
-#     multilang_test = {
-#         "en-us": "Hello, how are you?",
-#         "fr-fr": "Comment allez-vous?",
-#     }
-    
-#     for lang, text in multilang_test.items():
-#         samples, sample_rate = tts.engine.create(
-#             text,
-#             voice="am_adam",
-#             lang=lang
-#         )
-#         sf.write(f"test_lang_{lang}.wav", samples, sample_rate)
-#         print(f"Created test_lang_{lang}.wav")
-
-#     # Test 3: ASR - Basic transcription and language detection
-#     for audio_file in [f for f in os.listdir('.') if f.startswith('test_') and f.endswith('.wav')]:
-#         print(f"\nTesting ASR on {audio_file}")
-        
-#         # Test language detection
-#         lang_result, lang_probs = asr.engine.auto_detect_language(audio_file)
-#         print(f"Detected language: {lang_result[0]} (confidence: {lang_result[1]:.2f})")
-        
-#         # Test transcription
-#         segments = asr.engine.transcribe(audio_file)
-#         print("Transcription:")
-#         for seg in segments:
-#             print(f"{seg.t0/1000:.2f}s -> {seg.t1/1000:.2f}s: {seg.text}")
-
-#     # Test 4: ASR - System info and parameters
-#     print("\nSystem Information:")
-#     asr.engine.system_info()
-#     print("\nModel Parameters:")
-#     print(asr.engine.get_params())
-    
-#     # Test 5: Available voices and languages
-#     print("\nAvailable TTS voices:", tts.engine.get_voices())
-#     print("Available TTS languages:", tts.engine.get_languages())
-#     print("Available ASR languages:", asr.engine.available_languages())
-
-#     # Cleanup test files
-#     for f in [f for f in os.listdir('.') if f.startswith('test_') and f.endswith('.wav')]:
-#         os.remove(f)
-    
-    
-    
-#     """
-#     # test asr
-#     # voices = tts.engine.get_voice_style()
-#     # print(voices)
-
-#     samples, sample_rate = tts.engine.create(
-#         "And here we go again, we know the start, we know the end Masters of the scene We've done it all before and now we're back to get some more You know what I mean",
-#         voice="am_adam", speed=1.0
-#     )
-#     sf.write(f"meh.wav", samples, sample_rate)
-
-#     print(f"Created mehmeh.wav")
-
-#     # test tts
-#     segments = asr.engine.transcribe('meh.wav', new_segment_callback=print)
-#     print(segments)
-#     """
-
-# def __run__(args):
-#     tts = TTSEngine()
-#     asr = ASREngine()
-#     # test(tts, asr)
-#     return tts, asr
-
-# def run():
-#     computer_audio = multiprocessing.Process(target=__run__, args=(None, None), name="computer-audio")
-#     computer_audio.start()
-#     computer_audio.join()
+    tts_engine.init_screen()
+    spoken, unspoken = tts_engine.play_synthesized_audio_with_led_visualizer(text)

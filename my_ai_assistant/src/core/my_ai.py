@@ -13,7 +13,7 @@ from src.core.api_server.api import MyAIChatAPI
 from src.core.my_ai_assistant import MyAIAssistant
 from src.inference_engine.inference_processor import InferenceProcessor
 from my_ai.src.memory_processor.memory_processor import MemoryProcessor
-from src.speech_engine.speech_engine import SpeechEngine
+from src.interface.speech_engine import SpeechEngine
 from my_ai.src.utils.my_ai_utils import load_config
 from src.utils.log_manager import LoggingManager
 

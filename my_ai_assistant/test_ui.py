@@ -1,5 +1,5 @@
 # Main application entry point
-from src.ui.my_ai_ui import MyAIInterface
+from src.interface.ui.my_ai_ui import MyAIInterface
     
 
 if __name__ == "__main__":

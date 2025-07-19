@@ -10,8 +10,8 @@ from src.core.api_server.data_models import ContentSegment, MessageContent
 from src.inference_engine.inference_processor import InferenceProcessor
 from src.utils.log_manager import LoggingManager
 from src.core.my_ai_assistant import MyAIAssistant
-from src.ui.ui_utils import get_custom_css
-from src.ui.styling import js_func
+from src.interface.ui.ui_utils import get_custom_css
+from src.interface.ui.styling import js_func
 from gradio import ChatMessage
 from gradio.themes.utils import sizes
 
