@@ -18,20 +18,35 @@ Used stack:
   
 curl silero models for stt tts and vad
 ```shell
+
+# macos
 python3 -m venv .venv
 brew install portaudio
 brew install ffmpeg
 
 # fedora
+sudo dnf install gcc clang
+sudo dnf install @development-tools
+sudo dnf install cmake python3-devel
 sudo dnf install portaudio portaudio-devel
 sudo dnf install portaudio ffmpeg
 
 pip install --upgrade pip
+pip install setuptools
 pip install -r requrements.txt
-make db-run  # for redis dbs
-python -m inference_server.serve # has both, text and multimodal model
+# make db-run  # for redis dbs
+
+# 1. run inference server
+python -m my_ai_inference_server.serve # has both, text and multimodal model
+
+# 2. run mcp server
+python -m my_ai_mcp_server.serve
 # python -m main # in another terminal, or run inference server as daemon
-python -m 
+
+# 3. run ui
+python -m my_ai_assistant.main
+
+
 brew install mactop
 sudo mactop
 ```
