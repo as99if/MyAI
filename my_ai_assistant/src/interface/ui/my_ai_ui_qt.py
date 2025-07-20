@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
     QLabel, QLineEdit, QListWidget, QListWidgetItem, QSizePolicy, QSplitter
 )
 from PyQt6.QtCore import Qt
-
+import asyncio
 from src.interface.speech_visualizer import AudioVisualizer
 from src.interface.speech_engine import SpeechEngine
 from src.utils.my_ai_utils import format_messages
@@ -133,14 +133,20 @@ class MyAIInterface(QWidget):
             content=[ContentSegment(type="text", text=message)],
             timestamp=datetime.now()
         )
+        
+        message = format_messages([_message])
+        self.update_chat([message])
         try:
-            _response, _recent_conversations = self.my_ai_assistant.process_and_create_chat_generation(
+            _response, _recent_conversations = asyncio.run(
+                self.my_ai_assistant.process_and_create_chat_generation(
                 message=_message,
                 is_tool_call_permitted=if_agent
             )
+            )
             self.log_message(f"Got response: {_response.content}")
-            history = self.format_conversation_history(_recent_conversations)
-            history = format_messages(history)
+            # history = self.format_conversation_history(_recent_conversations)
+            history = format_messages([_response])
+            self.update_chat(history)
             return history
         except Exception as e:
             self.log_message(f"Error getting response: {e}", "ERROR")
@@ -162,6 +168,7 @@ class MyAIInterface(QWidget):
         msg = self.msg_input.text().strip()
         if msg:
             history = self.get_reply(msg, if_agent=False)
+            
             self.update_chat(history)
             self.msg_input.clear()
 
@@ -169,6 +176,7 @@ class MyAIInterface(QWidget):
         msg = self.msg_input.text().strip()
         if msg:
             history = self.get_reply(msg, if_agent=True)
+            
             self.update_chat(history)
             self.msg_input.clear()
 
