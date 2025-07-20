@@ -31,6 +31,15 @@ sudo dnf install cmake python3-devel
 sudo dnf install portaudio portaudio-devel
 sudo dnf install portaudio ffmpeg
 
+# to install pyQT in fedora
+sudo dnf install qt5-qtbase-devel
+# find installed qt5 path
+# find /usr -name qmake-qt5
+# find /usr -name qmake-qt5
+# export PATH="/usr/lib64/qt5/bin:$PATH"
+# export PATH="/usr/bin/qmake-qt5:$PATH"
+# pip install PyQT5
+
 pip install --upgrade pip
 pip install setuptools
 pip install -r requrements.txt

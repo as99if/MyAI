@@ -7,7 +7,7 @@ import json
 import os
 from datetime import datetime
 import sys
-import pyaudio
+
 import wave
 import numpy as np
 import queue
@@ -75,35 +75,11 @@ class MyAIAssistant:
 
         self.mock_conversation_history = mock_conversation_history
 
-        # PyAudio configuration for audio detection
-        self.CHUNK = 2048  # 1024, 4096
-        self.FORMAT = pyaudio.paInt16
-        self.CHANNELS = 1  # mono
-        self.RATE = 44100
-        self.WAVE_OUTPUT_FILENAME = "src/speech_engine/temp_audio.flac"
-        self.pyaudio = pyaudio.PyAudio()
-
-        # Audio detection parameters
-        self.THRESHOLD = 500
-        self.interruption = False
 
         # Text tracking for interruption handling
         self.spoken_reply = ""
         self.remaining_reply = ""
 
-        # Average speaking rate (characters per second)
-        self.CHARS_PER_SECOND = 15
-
-        # Start the interruption monitoring thread
-        self.monitor_audio_interruption_thread = threading.Thread(
-            target=self.monitor_audio_interruption,
-            name="monitor_audio_interruption",
-            daemon=True,
-        )
-        # Interrupting monitoring
-        self.monitor_audio_interruption_thread.start()
-
-        # self.gui_visualizer = SpectrogramWidget()
 
         # Set up signal handler for graceful exit
         signal.signal(signal.SIGINT, self.exit_gracefully)
@@ -111,220 +87,24 @@ class MyAIAssistant:
         self.logging_manager.add_message("Initiated - MyAIAssistant", level="INFO", source="MyAIAssistant")
         
 
-    def split_text_into_chunks(self, text, chunk_size=100) -> list:
-        """
-        Splits text into smaller chunks for progressive text-to-speech processing.
-
-        Args:
-            text (str): The input text to split
-            chunk_size (int, optional): Maximum characters per chunk. Defaults to 100.
-
-        Returns:
-            list: List of text chunks
-        """
-        words = text.split()
-        chunks = []
-        current_chunk = []
-        current_size = 0
-
-        for word in words:
-            if current_size + len(word) > chunk_size:
-                chunks.append(" ".join(current_chunk))
-                current_chunk = [word]
-                current_size = len(word)
-            else:
-                current_chunk.append(word)
-                current_size += len(word)
-
-        if current_chunk:
-            chunks.append(" ".join(current_chunk))
-
-        return chunks
-
-    def listen(self, duration=5) -> Optional[str]:
-        """
-        Records and transcribes user speech input.
-
-        Args:
-            duration (int, optional): Maximum recording duration in seconds. Defaults to 5.
-
-        Returns:
-            Optional[str]: Transcribed text or None if transcription fails
-        """
-        if self.speech_engine != None:
-            audio_queue = queue.Queue()
-            frames = []
-
-            def audio_callback(in_data, frame_count, time_info, status):
-                audio_queue.put(in_data)
-                return (None, pyaudio.paContinue)
-
-            stream = None
-            try:
-                # while condition : key pressed
-                while keyboard.is_pressed("space"):
-                    if stream is None:
-                        stream = self.pyaudio.open(
-                            format=self.FORMAT,
-                            channels=self.CHANNELS,
-                            rate=self.RATE,
-                            input=True,
-                            frames_per_buffer=self.CHUNK,
-                            stream_callback=audio_callback,
-                        )
-                    if not audio_queue.empty():
-                        data = audio_queue.get()
-                        frames.append(data)
-            finally:
-                if stream:
-                    stream.stop_stream()
-                    stream.close()
-
-            if len(frames) > 0:
-
-                # Save the recorded audio to a temporary WAV file
-                with wave.open(self.WAVE_OUTPUT_FILENAME, "wb") as wf:
-                    # print("Processing audio...")
-                    wf.setnchannels(self.CHANNELS)
-                    wf.setsampwidth(self.pyaudio.get_sample_size(self.FORMAT))
-                    wf.setframerate(self.RATE)
-                    wf.writeframes(b"".join(frames))
-
-                try:
-                    # Use Whisper CPP for transcription
-
-                    result = self.asr_engine.engine.transcribe(
-                        media=self.WAVE_OUTPUT_FILENAME
-                    )
-
-                    # Clean up temporary file
-                    if os.path.exists(self.WAVE_OUTPUT_FILENAME):
-                        os.remove(self.WAVE_OUTPUT_FILENAME)
-
-                    return result[0].text if result else None
-
-                except Exception as e:
-                    self.logging_manager.add_message(f"Transcription error: {e}", level='INFO', source='MyAIAssistant')
-                    if os.path.exists(self.WAVE_OUTPUT_FILENAME):
-                        os.remove(self.WAVE_OUTPUT_FILENAME)
-                    return None
-        else:
-            self.logging_manager.add_message(f"Speech engine is not initialized.", level='INFO', source='MyAIAssistant')
-
-            return None
-
-    # def voice_reply(self, text, is_api_request: bool = False) -> Tuple[str, str]:
-    #     """
-    #     Converts text to speech with interruption handling.
-
-    #     Args:
-    #         text (str): Text to be spoken
-
-    #     Returns:
-    #         Tuple[str, str]: (spoken_reply, remaining_reply)
-    #         - spoken_reply: The portion of text that was successfully spoken
-    #         - remaining_reply: Unspoken text if interrupted
-    #         - OR
-    #         - audio file or stream if is_api_request is True
-    #     """
-    #     if self.speech_engine != None:
-    #         if is_api_request:
-    #             try:
-
-    #                 # # Create in-memory file-like object
-    #                 audio_buffer = io.BytesIO()
-
-    #                 # # Save as WAV file in memory
-    #                 with wave.open(audio_buffer, "wb") as wav_file:
-    #                     self.tts_engine.synthesize_wav(text, wav_file=wav_file, syn_config=self.tts_engine.engine_config)
-                    
-    #                 # # Get the audio data as bytes
-    #                 audio_data = audio_buffer.getvalue()
-    #                 audio_buffer.close()
-    #                 return audio_data
-
-    #             except Exception as e:
-    #                 self.logging_manager.add_message(f"Error generating audio for API response: {e}", level='ERROR', source='MyAIAssistant')
-
-
-    #                 raise e
-
-    #         if not is_api_request:
-    #             try:
-    #                 # Reset flags and text tracking
-    #                 self.interruption = False
-    #                 self.spoken_reply = ""
-    #                 self.remaining_reply = text
-
-    #                 # Split text into manageable chunks
-    #                 chunks = self.split_text_into_chunks(text)
-
-    #                 # detect key press for interruption handling
-
-    #                 # Process each chunk of text for TTS synthesis and playback
-    #                 for i, chunk in enumerate(chunks):
-    #                     if self.interruption:  # Check if user interrupted by speaking
-    #                         self.logging_manager.add_message("Interruption detected!", level="INFO", source="MyAIAssistant")
-    #                         self.remaining_reply = " ".join(chunks[i:])
-    #                         break
-
-    #                     samples, self.kokoro_sample_rate = (
-    #                         self.tts_engine.engine.create(
-    #                             [chunk], voice="am_adam", speed=0.92, lang="en-us"
-    #                         )
-    #                     )
-    #                     # # Save as WAV file in memory
-    #                     with wave.open(audio_buffer, "wb") as wav_file:
-    #                         self.tts_engine.synthesize_wav(text, wav_file=wav_file, syn_config=self.tts_engine.engine_config)
-                    
-    #                     # print("Playing audio...")
-                        
-    #                     # Convert numpy array to bytes
-    #                     audio_data = samples.astype(np.int16).tobytes()
-                        
-    #                     # Create PyAudio stream for playback
-    #                     stream = self.pyaudio.open(
-    #                         format=pyaudio.paInt16,
-    #                         channels=1,
-    #                         rate=self.kokoro_sample_rate,
-    #                         output=True
-    #                     )
-
-    #                     # Play the audio and monitor interruptions
-    #                     start_time = time.time()
-    #                     chunk_size = 1024  # Adjust this value based on your needs
-                        
-    #                     for i in range(0, len(audio_data), chunk_size):
-    #                         if self.interruption:
-    #                             elapsed_time = time.time() - start_time
-    #                             spoken_chars = int(elapsed_time * self.CHARS_PER_SECOND)
-    #                             current_chunk_spoken = chunk[:spoken_chars]
-    #                             self.spoken_reply += current_chunk_spoken + " "
-    #                             break
-                            
-    #                         stream.write(audio_data[i:i + chunk_size])
-    #                         time.sleep(0.01)  # Small delay to prevent busy-waiting
-
-    #                     # Clean up stream
-    #                     stream.stop_stream()
-    #                     stream.close()
-
-    #                     # If no interruption occurred during this chunk playback
-    #                     if not self.interruption:
-    #                         self.spoken_reply += chunk + " "
-
-    #                 print("\nSpoken text:", self.spoken_reply)
-    #                 self.remaining_reply = f"(Voice reply interrupted, remaining unsaid reply)\n{self.remaining_reply}"
-    #                 print("\nRemaining text:", self.remaining_reply)
-
-    #                 return self.spoken_reply, self.remaining_reply
-    #             except Exception as e:
-    #                 self.logging_manager.add_message(f"Error in text-to-speech: {e}", level='ERROR', source='MyAIAssistant')
-    #   else:
-    #        self.logging_manager.add_message(f"Speech engine is not initialized.", level='INFO', source='MyAIAssistant')
-
-    #        return None, None
     
+    def listen(self) -> Optional[str]:
+        """
+        Listens for audio input and returns the transcribed text.
+        Uses PyAudio to capture audio and SpeechEngine for transcription.
+        
+        Returns:
+            Optional[str]: Transcribed text or None if no speech detected.
+        """
+        if self.speech_engine is None:
+            self.logging_manager.add_message("Speech engine is not initialized.", level='ERROR', source='MyAIAssistant')
+            return None
+        try:
+            return self.asr_engine.record_and_transcribe()
+        except Exception as e:
+            self.logging_manager.add_message(f"Error listening user audio: {e}", level='ERROR', source='MyAIAssistant')
+            raise e
+        
     def voice_reply(self, text: str, is_api_request: bool = False) -> str:
         """
         Converts text to speech and returns the audio file or stream.
@@ -338,7 +118,7 @@ class MyAIAssistant:
         """
         if self.speech_engine != None:
             try:
-                self.spoken_text, self.remaining_reply = self.speech_engine.tts_engine.play_synthesized_audio_with_led_visualizer(text)
+                self.spoken_text, self.remaining_reply = self.tts_engine.play_synthesized_audio_with_led_visualizer(text)
                 
                 print("\nSpoken text:", self.spoken_reply)
                 self.remaining_reply = f"(Voice reply interrupted, remaining unsaid reply)\n{self.remaining_reply}"
@@ -353,20 +133,7 @@ class MyAIAssistant:
             self.logging_manager.add_message(f"Speech engine is not initialized.", level='INFO', source='MyAIAssistant')
             return None
 
-    def monitor_audio_interruption(self):
-        """
-        Continuously monitors for user interruptions via keyboard input.
-        Runs in a separate thread to enable real-time interruption detection.
-        """
-        if self.speech_engine != None:
-            while True:
-                if keyboard.is_pressed("space"):
-                    self.interruption = True
-                else:
-                    self.interruption = False
-                time.sleep(0.1)  # Prevent busy-waiting
-        else:
-            pass
+    
 
     def exit_gracefully(self, signum=None, frame=None):
         """
@@ -387,13 +154,7 @@ class MyAIAssistant:
             print("\nInitiating graceful shutdown...")
             self.logging_manager.add_message("Initiating - MyAIAssistant graceful shutdown", level="INFO", source="MyAIAssistant")
         
-
-            # Stop the audio interruption monitoring thread
-            if hasattr(self, "monitor_audio_interruption_thread"):
-                self.interruption = True  # Signal thread to stop
-                if self.monitor_audio_interruption_thread.is_alive():
-                    self.monitor_audio_interruption_thread.join(timeout=2.0)
-
+            self.asr_engine.exit_gracefully()
             # Clean up PyAudio resources
             if hasattr(self, "pyaudio"):
                 try:
@@ -410,15 +171,11 @@ class MyAIAssistant:
                         print(f"Error removing temporary audio file: {e}")
 
             # Close speech engine connections
-            if hasattr(self, "speech_engine") and self.speech_engine:
+            if self.speech_engine is not None:
                 try:
-                    if self.tts_engine:
-                        self.tts_engine.close()
-                    if self.asr_engine:
-                        self.asr_engine.close()
+                    self.speech_engine.close()
                 except Exception as e:
-                    print(f"Error closing speech engines: {e}")
-
+                    print(f"Error closing speech engine: {e}")
             # Close inference processor connections
             if hasattr(self, "inference_processor"):
                 try:
@@ -658,74 +415,7 @@ class MyAIAssistant:
             
             
 
-        # Deliver response
-        # Handle API requests
-        """if is_api_request:
-            if not is_audio_requested_in_api_response:
-                # Add response to history before returning
-                await self._add_messages_to_history([response])
-                recent_conversations = recent_conversations + [response]
-                return response, recent_conversations
-
-            # Handle audio in API response
-            text_response = response.content[0]
-            if response.content[0].type == "text":
-                text_response = response.content[0].content
-            if self.speech_engine != None and response.type != "unspoken":
-                audio_reply = self.voice_reply(
-                    text_response, is_audio_requested_in_api_response
-                )
-                # reponse - audio and text
-                response_content = [
-                    ContentSegment(
-                        type="text",
-                        content=text_response,
-                        description="text reply",
-                    ),
-                    ContentSegment(
-                        type="audio",
-                        audio_url=audio_reply,
-                        description="audio of the text reply",
-                    ),
-                ]
-                response = MessageContent(
-                    user="assistant",
-                    content=response_content,
-                    timestamp=datetime.now().isoformat(),
-                    type="computer_response_with_audio",
-                )
-                # Add response with audio to history before returning
-                """
-
-        # Handle voice reply for non-API requests
-        """if (
-            not is_api_request
-            and self.voice_reply_enabled
-            and self.speech_engine != None
-        ):
-
-            text_response = response.content[0]
-            if response.content[0].type == "text":
-                text_response = response.content[0].content
-
-            spoken_reply, unspoken_reply = self.voice_reply(
-                text_response,
-                is_audio_requested_in_api_response,
-            )
-            reply = (
-                f"{spoken_reply}"
-                if self.remaining_reply != ""
-                else f"{spoken_reply}\n[- Interrupted, Remaining Unspoken Reply: {unspoken_reply} -]"
-            )
-
-            response = MessageContent(
-                role="assistant",
-                message=ContentSegment(type="text", content=reply),
-                timestamp=datetime.now().isoformat(),
-                type="computer_message",
-            )
-            # Add voice response to history before returning
-        """
+        
         if self.memory_processor:
             try:
                 await self.memory_processor.add_conversation([response])
