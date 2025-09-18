@@ -1,3 +1,7 @@
+# TODO: add face detection
+# TODO: emotion detection
+# TODO: face recognition capabilities
+
 import asyncio
 from concurrent.futures import ProcessPoolExecutor
 import torch
@@ -5,7 +9,7 @@ import cv2
 import numpy as np
 from ultralytics import YOLO
 
-class ObjectDetectionEngine:
+class VisionAnalyticsEngine:
     """
     Object Detection Engine using YOLOv9 with distance estimation capabilities.
     """
@@ -15,7 +19,7 @@ class ObjectDetectionEngine:
 
     def __init__(self, model_path='./models/yolov9-c.pt'):
         """
-        Initialize the ObjectDetectionEngine with a YOLO model.
+        Initialize the VisionAnalyticsEngine with a YOLO model.
         
         :param model_path: Path to the YOLOv9 model weights
         """
@@ -123,10 +127,10 @@ class ObjectDetectionEngine:
 
 # def create_object_detector(model_path='./models/yolov9-c.pt'):
 #     """
-#     Factory function to create and initialize an ObjectDetectionEngine instance.
+#     Factory function to create and initialize an VisionAnalyticsEngine instance.
     
 #     :param model_path: Path to the YOLO model weights
-#     :return: Initialized ObjectDetectionEngine
+#     :return: Initialized VisionAnalyticsEngine
 #     """
-#     detector = ObjectDetectionEngine(model_path)
+#     detector = VisionAnalyticsEngine(model_path)
 #     return detector

@@ -2,10 +2,9 @@
 @author - Aisf Ahmed - asif.shuvo2199@outlook.com
 """
 import os
-
 import io
 import queue
-from typing import Optional
+from typing import Callable, Optional, Tuple, Generator, Union
 import wave
 import keyboard
 import numpy as np
@@ -15,13 +14,25 @@ from scipy.fft import fft
 from scipy.signal import get_window
 from piper import PiperVoice, SynthesisConfig
 import pygame
-
 import pyaudio
-import wave
-
+from src.utils.log_manager import LoggingManager
+from pywhispercpp.model import Model as Whisper_ccp
 
 class TTSEngine:
-    def __init__(self, model_path="/home/asifahmedshuvo/Development/MyAI/my_ai_assistant/models/speech/en_GB-semaine-medium.onnx", visualizer=None):
+    """Text-to-Speech engine with optional streaming and callback support."""
+    
+    def __init__(self, model_path: str = "/Users/asifahmed/personal/development/MyAI/my_ai_assistant/models/speech/en_GB-semaine-medium.onnx", debug: bool = False):
+        """
+        Initialize the TTS engine.
+        
+        Args:
+            model_path (str): Path to the Piper voice model
+            debug (bool): Enable debug logging
+        """
+        self.logging_manager = LoggingManager()
+        self.logging_manager.add_message("Initiating - TTSEngine", level="INFO", source="TTSEngine")
+        
+        self.debug = debug
         self.voice = PiperVoice.load(model_path)
         self.syn_config = SynthesisConfig(
             volume=0.5,
@@ -30,52 +41,71 @@ class TTSEngine:
             noise_w_scale=1.0,
             normalize_audio=False,
         )
-        # Visualization parameters
-        self.visualizer = visualizer  # PyQt AudioVisualizer
-        self.num_bands = 32
-        self.led_levels = 32
-        self.user_interrupted = [False]
-        # Start the interruption monitoring thread
-        self.monitor_audio_interruption_thread = threading.Thread(
-            target=self.monitor_audio_interruption,
-            name="monitor_audio_interruption",
-            daemon=True,
-        )
-        # Interrupting monitoring
-        self.monitor_audio_interruption_thread.start()
-
-    def set_visualizer(self, visualizer):
-        self.visualizer = visualizer
-
-    def get_visualizer(self):
-        return self.visualizer
-    
-    def monitor_audio_interruption(self):
-        """
-        Continuously monitors for user interruptions via keyboard input.
-        Runs in a separate thread to enable real-time interruption detection.
-        """
-        while True:
-            if keyboard.is_pressed("space"):
-                self.user_interrupted = [True]
-            else:
-                    
-                self.user_interrupted = [False]
-            time.sleep(0.1)  # Prevent busy-waiting
         
+        # Playback state
+        self.user_interrupted = [False]
+        self.is_playing = [False]
+        
+        # Callbacks
+        self.text_stream_callback: Optional[Callable[[str], None]] = None
+        self.playback_position_callback: Optional[Callable[[float, bool], None]] = None
+        self.audio_data_callback: Optional[Callable[[np.ndarray, int, float], None]] = None
+        
+        pygame.mixer.init()
+        
+    def _debug_print(self, message: str) -> None:
+        """Print debug message if debug mode is enabled."""
+        if self.debug:
+            print(f"[TTS DEBUG] {message}")
     
-    def synthesize(self, text):
+    def set_text_stream_callback(self, callback: Callable[[str], None]):
+        """Set callback for streaming text updates."""
+        self.text_stream_callback = callback
+    
+    def set_playback_position_callback(self, callback: Callable[[float, bool], None]):
+        """Set callback for playback position updates."""
+        self.playback_position_callback = callback
+    
+    def set_audio_data_callback(self, callback: Callable[[np.ndarray, int, float], None]):
+        """Set callback for providing audio data to visualizer."""
+        self.audio_data_callback = callback
+        
+    def synthesize(self, text: str) -> io.BytesIO:
+        """
+        Synthesize text to audio.
+        
+        Args:
+            text (str): Text to synthesize
+            
+        Returns:
+            io.BytesIO: Audio buffer containing WAV data
+        """
+        self._debug_print(f"Synthesizing text: '{text[:50]}...' ({len(text)} chars)")
         audio_buffer = io.BytesIO()
         with wave.open(audio_buffer, "wb") as wav_file:
             self.voice.synthesize_wav(text, wav_file=wav_file, syn_config=self.syn_config)
         audio_buffer.seek(0)
+        self._debug_print("Audio synthesis completed")
         return audio_buffer
 
-    def play_synthesized_audio_with_led_visualizer(self, text) -> tuple:
+    def play_synthesized_audio(
+        self, 
+        text: str, 
+        stream: bool = False, 
+        mute: bool = False
+    ):
         """
-        Play synthesized audio with LED visualizer and interruption support.
-        Visualization is done via the PyQt AudioVisualizer widget.
+        Play synthesized audio with optional streaming.
         """
+        self._debug_print(f"[TTS DEBUG] play_synthesized_audio: Start Playing synthesized audio - text: {text}")
+        _parameters = ""
+        if stream:
+            _parameters += "Stream: True; "
+        if mute:
+            _parameters += "Mute: True; "
+        self.logging_manager.add_message(f"Synthesizing reply - {_parameters}", level="INFO", source="TTSEngine")
+        
+        # Synthesize once
         audio_buffer = self.synthesize(text)
         with wave.open(audio_buffer, "rb") as wav_file:
             frames = wav_file.readframes(-1)
@@ -84,6 +114,7 @@ class TTSEngine:
             sample_width = wav_file.getsampwidth()
             total_frames = wav_file.getnframes()
 
+        # Convert to mono float32 (normalized)
         if sample_width == 1:
             dtype = np.uint8
         elif sample_width == 2:
@@ -92,199 +123,171 @@ class TTSEngine:
             dtype = np.int32
         else:
             dtype = np.float32
-
         audio_data = np.frombuffer(frames, dtype=dtype)
         if n_channels == 2:
-            audio_data = audio_data.reshape(-1, 2)
-            audio_data = np.mean(audio_data, axis=1)
+            audio_data = audio_data.reshape(-1, 2).mean(axis=1)
         audio_data = audio_data.astype(np.float32)
-        if dtype != np.float32:
-            audio_data = audio_data / np.max(np.abs(audio_data))
+        max_abs = np.max(np.abs(audio_data)) if audio_data.size else 0
+        if max_abs > 0:
+            audio_data /= max_abs
+        total_duration = total_frames / sample_rate if sample_rate else 0.0
+
+        # Callback for visualizer
+        if self.audio_data_callback:
+            self.audio_data_callback(audio_data, sample_rate, total_duration)
         audio_buffer.seek(0)
 
-        pygame.mixer.init(frequency=sample_rate)
+        # Ensure mixer matches sample rate
+        try:
+            init_state = pygame.mixer.get_init()
+            if init_state:
+                current_freq = init_state[0]
+                if current_freq != sample_rate:
+                    self._debug_print(f"Reinitializing mixer: {current_freq} -> {sample_rate}")
+                    pygame.mixer.quit()
+                    pygame.mixer.init(frequency=sample_rate)
+            else:
+                pygame.mixer.init(frequency=sample_rate)
+        except pygame.error as e:
+            self._debug_print(f"Pygame mixer init error: {e}")
+            return ("", text) if not stream else iter([])
 
-        num_bands = self.num_bands
-        led_levels = self.led_levels
-        chunk_duration = 0.05
-        chunk_size = int(sample_rate * chunk_duration)
-        freq_bands = np.logspace(np.log10(20), np.log10(sample_rate//2), num_bands + 1)
-        band_centers = (freq_bands[:-1] + freq_bands[1:]) / 2
-        smoothing_factor = 0.3
-        previous_levels = np.zeros(num_bands)
-        result_spoken_text = [""]
-        result_unspoken_text = [""]
-
-        is_playing = [True]
+        # Shared state containers
+        self.is_playing = [True]
         self.user_interrupted = [False]
+        result_spoken_text = [""]
+        result_unspoken_text = [text]
+        playback_start_time = [0.0]
 
-        def get_current_position():
-            if pygame.mixer.music.get_busy():
-                return pygame.mixer.music.get_pos() / 1000.0
-            return 0
+        def get_current_position() -> float:
+            if pygame.mixer.music.get_busy() and playback_start_time[0] > 0:
+                return time.time() - playback_start_time[0]
+            return 0.0
 
-        def calculate_text_split():
+        def update_text_progress():
             pos_seconds = get_current_position()
-            total_duration = total_frames / sample_rate
-            proportion_played = min(1.0, max(0.0, pos_seconds / total_duration))
-            char_position = int(len(text) * proportion_played)
-            result_spoken_text[0] = text[:char_position].strip()
-            result_unspoken_text[0] = text[char_position:].strip()
-            return proportion_played
+            proportion = min(1.0, max(0.0, (pos_seconds / total_duration) if total_duration else 0))
+            char_pos = int(len(text) * proportion)
+            result_spoken_text[0] = text[:char_pos]
+            result_unspoken_text[0] = text[char_pos:]
 
-        def play_audio():
-            pygame.mixer.music.load(audio_buffer)
-            pygame.mixer.music.play()
+        def audio_thread_fn():
             try:
+                pygame.mixer.music.load(audio_buffer)
+                pygame.mixer.music.set_volume(0.0 if mute else 1.0)
+                playback_start_time[0] = time.time()
+                pygame.mixer.music.play()
                 while pygame.mixer.music.get_busy() and not self.user_interrupted[0]:
-                    time.sleep(0.01)
+                    time.sleep(0.05)
                 if self.user_interrupted[0]:
-                    print("Audio thread detected interruption")
-                    
+                    pygame.mixer.music.stop()
                 else:
+                    # Force completion state
                     result_spoken_text[0] = text
                     result_unspoken_text[0] = ""
-                    print("Playback completed normally")
             except Exception as e:
-                print(f"Error in audio thread: {e}")
+                self._debug_print(f"Audio playback error: {e}")
             finally:
-                is_playing[0] = False
+                self.is_playing[0] = False
 
-        audio_thread = threading.Thread(target=play_audio)
-        audio_thread.daemon = True
-        audio_thread.start()
+        at = threading.Thread(target=audio_thread_fn, daemon=True)
+        at.start()
 
-        # Main visualization loop (no pygame display, just update PyQt visualizer)
-        running = True
-        interrupted = False
-        while running:
-            # --- Synchronize visualization with audio playback ---
-            pos_seconds = get_current_position()
-            start_idx = int(pos_seconds * sample_rate)
-            end_idx = start_idx + chunk_size
+        # Non-streaming path (no generator)
+        if not stream:
+            last_callback_time = 0.0
+            while self.is_playing[0]:
+                update_text_progress()
+                now = time.time()
+                if self.playback_position_callback and now - last_callback_time > 0.05:
+                    self.playback_position_callback(get_current_position(), True)
+                    last_callback_time = now
+                # Removed keyboard space interruption logic
+                time.sleep(0.02)
+            if self.playback_position_callback:
+                self.playback_position_callback(0.0, False)
+            at.join(timeout=1.0)
+            return result_spoken_text[0], result_unspoken_text[0]
 
-            if is_playing[0] and start_idx < len(audio_data):
-                if end_idx > len(audio_data):
-                    chunk_data = np.zeros(chunk_size)
-                    remaining = len(audio_data) - start_idx
-                    chunk_data[:remaining] = audio_data[start_idx:]
-                else:
-                    chunk_data = audio_data[start_idx:end_idx]
-                windowed_data = chunk_data * get_window('hann', len(chunk_data))
-                fft_data = np.abs(fft(windowed_data))[:chunk_size//2]
-                freqs = np.fft.fftfreq(chunk_size, 1/sample_rate)[:chunk_size//2]
-                band_levels = np.zeros(num_bands)
-                for i in range(num_bands):
-                    band_mask = (freqs >= freq_bands[i]) & (freqs < freq_bands[i+1])
-                    if np.any(band_mask):
-                        band_levels[i] = np.sqrt(np.mean(fft_data[band_mask]**2))
-                if np.max(band_levels) > 0:
-                    band_levels = band_levels / np.max(band_levels)
-                    band_levels = np.log10(band_levels + 0.01) + 2
-                    band_levels = np.clip(band_levels, 0, 1)
-                previous_levels = (smoothing_factor * band_levels +
-                                   (1 - smoothing_factor) * previous_levels)
-            else:
-                previous_levels *= 0.8
+        # Streaming path (return generator)
+        def stream_generator():
+            last_spoken = ""
+            while self.is_playing[0]:
+                update_text_progress()
+                spoken = result_spoken_text[0]
 
-            # Update PyQt visualizer
-            if self.visualizer is not None:
-                norm_levels = previous_levels / np.max(previous_levels) if np.max(previous_levels) > 0 else previous_levels
-                self.visualizer.update_bars(norm_levels)
+                if self.playback_position_callback:
+                    self.playback_position_callback(get_current_position(), True)
 
-            # Check for interruption (optional: add a method to interrupt from UI)
-            if not is_playing[0] and not interrupted:
-                interrupted = True
-            if not is_playing[0]:
-                running = False
+                # Removed keyboard interruption logic
 
-            time.sleep(0.016)  # ~60 FPS
+                chunk = ""
+                if spoken != last_spoken:
+                    chunk = spoken[len(last_spoken):]
+                    if self.text_stream_callback and chunk:
+                        self.text_stream_callback(chunk)
+                    last_spoken = spoken
 
-        print("Visualization finished")
-        print(f"Final results - Spoken: {len(result_spoken_text[0])} chars, Unspoken: {len(result_unspoken_text[0])} chars")
-        return result_spoken_text[0], result_unspoken_text[0]
+                yield chunk
+                time.sleep(0.02)
 
-    # def play_synthesized_audio_without_led_visualizer(self, text):
-    #     audio_buffer = self.synthesize(text)
-    #     with wave.open(audio_buffer, "rb") as wav_file:
-    #         sample_rate = wav_file.getframerate()
-    #         total_frames = wav_file.getnframes()
-    #     pygame.mixer.init(frequency=sample_rate)
+            if result_spoken_text[0] != last_spoken:
+                final_chunk = result_spoken_text[0][len(last_spoken):]
+                if self.text_stream_callback and final_chunk:
+                    self.text_stream_callback(final_chunk)
+                if final_chunk:
+                    yield final_chunk
 
-    #     result_spoken_text = [""]
-    #     result_unspoken_text = [""]
-    #     is_playing = [True]
-    #     self.user_interrupted = [False]
+            if self.playback_position_callback:
+                self.playback_position_callback(0.0, False)
+            at.join(timeout=1.0)
 
-    #     def get_current_position():
-    #         if pygame.mixer.music.get_busy():
-    #             return pygame.mixer.music.get_pos() / 1000.0
-    #         return 0
+        return stream_generator()
 
-    #     def calculate_text_split():
-    #         pos_seconds = get_current_position()
-    #         total_duration = total_frames / sample_rate
-    #         proportion_played = min(1.0, max(0.0, pos_seconds / total_duration))
-    #         char_position = int(len(text) * proportion_played)
-    #         result_spoken_text[0] = text[:char_position].strip()
-    #         result_unspoken_text[0] = text[char_position:].strip()
-    #         return proportion_played
-
-    #     def play_audio():
-    #         pygame.mixer.music.load(audio_buffer)
-    #         pygame.mixer.music.play()
-    #         try:
-    #             while pygame.mixer.music.get_busy() and not self.user_interrupted[0]:
-    #                 time.sleep(0.01)
-    #             if self.user_interrupted[0]:
-    #                 print("Audio thread detected interruption")
-    #             else:
-    #                 result_spoken_text[0] = text
-    #                 result_unspoken_text[0] = ""
-    #                 print("Playback completed normally")
-    #         except Exception as e:
-    #             print(f"Error in audio thread: {e}")
-    #         finally:
-    #             is_playing[0] = False
-
-    #     audio_thread = threading.Thread(target=play_audio)
-    #     audio_thread.daemon = True
-    #     audio_thread.start()
-
-    #     running = True
-    #     interrupted = False
-    #     while running:
-    #         time.sleep(0.01)
-    #         if not is_playing[0] and not interrupted:
-    #             interrupted = True
-    #         if not is_playing[0]:
-    #             running = False
-
-    #     print("Audio finished")
-    #     print(f"Final results - Spoken: {len(result_spoken_text[0])} chars, Unspoken: {len(result_unspoken_text[0])} chars")
-    #     return result_spoken_text[0], result_unspoken_text[0]
-    def exit_gracefully(self):
-        """
-        Gracefully exit the TTS engine, stopping any ongoing playback and cleaning up resources.
-        """
+    def stop_playback(self):
+        """Stop current audio playback."""
+        self.user_interrupted[0] = True
         if pygame.mixer.get_init():
             pygame.mixer.music.stop()
-            pygame.mixer.quit()
-        if self.visualizer is not None:
-            self.visualizer.clear_bars()
-        # Start the interruption monitoring thread
-        self.monitor_audio_interruption_thread = threading.Thread(
-            target=self.monitor_audio_interruption,
-            name="monitor_audio_interruption",
-            daemon=True,
-        )
-        # Interrupting monitoring
-        self.monitor_audio_interruption_thread.start()
+
+    def close(self) -> None:
+        """Gracefully shutdown TTS engine resources."""
+        try:
+            self._debug_print("Shutting down TTS engine...")
+            
+            # Stop any ongoing audio playback
+            if pygame.mixer.get_init():
+                pygame.mixer.music.stop()
+                pygame.mixer.quit()
+                self._debug_print("Pygame mixer shutdown complete")
+            
+            # Clean up voice model resources
+            if hasattr(self, 'voice') and self.voice is not None:
+                del self.voice
+                self._debug_print("Voice model resources cleaned up")
+            
+            self.logging_manager.add_message("TTSEngine shutdown complete", level="INFO", source="TTSEngine")
+            
+        except Exception as e:
+            self._debug_print(f"Error during TTS engine shutdown: {e}")
+            self.logging_manager.add_message(f"Error during TTSEngine shutdown: {e}", level="ERROR", source="TTSEngine")
 
 
-from pywhispercpp.model import Model as Whisper_ccp
+# ASREngine and SpeechEngine classes remain the same
 class ASREngine:
-    def __init__(self):
+    """Automatic Speech Recognition engine using Whisper."""
+    
+    def __init__(self, debug: bool = False):
+        """
+        Initialize the ASR engine.
+        
+        Args:
+            debug (bool): Enable debug logging
+        """
+        self.logging_manager = LoggingManager()
+        self.logging_manager.add_message("Initiating - ASREngine", level="INFO", source="ASREngine")
+        
+        self.debug = debug
         self.engine = Whisper_ccp(
             model="large-v3-turbo",
             models_dir="./models/speech/",
@@ -298,18 +301,26 @@ class ASREngine:
         self.RATE = 44100
         self.pyaudio = pyaudio.PyAudio()
         self.WAVE_OUTPUT_FILENAME = "src/speech_engine/temp_audio.flac"
+        
+        self._debug_print("ASR Engine initialized")
 
+    def _debug_print(self, message: str) -> None:
+        """Print debug message if debug mode is enabled."""
+        if self.debug:
+            print(f"[ASR DEBUG] {message}")
 
-    def record_and_transcribe(self, duration=5) -> Optional[str]:
+    def record_and_transcribe(self) -> Optional[str]:
         """
         Records and transcribes user speech input.
-
+        NOTE: currently recording will get triggered from my_ai_assistant.py
         Args:
-            duration (int, optional): Maximum recording duration in seconds. Defaults to 5.
+            duration (int): Maximum recording duration in seconds. Defaults to 5.
 
         Returns:
             Optional[str]: Transcribed text or None if transcription fails
         """
+        self.logging_manager.add_message(f"Recording speech input.", level="INFO", source="ASREngine")
+        self._debug_print(f"Starting recording")
         audio_queue = queue.Queue()
         frames = []
 
@@ -319,9 +330,9 @@ class ASREngine:
 
         stream = None
         try:
-            # while condition : key pressed
             while keyboard.is_pressed("space"):
                 if stream is None:
+                    self._debug_print("Opening audio stream")
                     stream = self.pyaudio.open(
                         format=self.FORMAT,
                         channels=self.CHANNELS,
@@ -335,56 +346,162 @@ class ASREngine:
                     frames.append(data)
         finally:
             if stream:
+                self._debug_print("Closing audio stream")
                 stream.stop_stream()
                 stream.close()
 
         if len(frames) > 0:
-
+            self._debug_print(f"Recorded {len(frames)} frames, saving to file")
+            
             # Save the recorded audio to a temporary WAV file
             with wave.open(self.WAVE_OUTPUT_FILENAME, "wb") as wf:
-                # print("Processing audio...")
                 wf.setnchannels(self.CHANNELS)
                 wf.setsampwidth(self.pyaudio.get_sample_size(self.FORMAT))
                 wf.setframerate(self.RATE)
                 wf.writeframes(b"".join(frames))
 
             try:
-                # Use Whisper CPP for transcription
-
-                result = self.engine.transcribe(
-                    media=self.WAVE_OUTPUT_FILENAME
-                )
-
+                self._debug_print("Starting transcription")
+                result = self.engine.transcribe(media=self.WAVE_OUTPUT_FILENAME)
+                
                 # Clean up temporary file
                 if os.path.exists(self.WAVE_OUTPUT_FILENAME):
                     os.remove(self.WAVE_OUTPUT_FILENAME)
-
-                return result[0].text if result else None
+                    
+                transcribed_text = result[0].text if result else None
+                self._debug_print(f"Transcription result: '{transcribed_text}'")
+                return transcribed_text
 
             except Exception as e:
-                self.logging_manager.add_message(f"Transcription error: {e}", level='INFO', source='SpeechEngine-ASR')
+                self._debug_print(f"Transcription error: {e}")
                 if os.path.exists(self.WAVE_OUTPUT_FILENAME):
                     os.remove(self.WAVE_OUTPUT_FILENAME)
                 return None
-    
-    
+        else:
+            self._debug_print("No audio frames recorded")
+            return None
+
+    def close(self) -> None:
+        """Gracefully shutdown ASR engine resources."""
+        try:
+            self._debug_print("Shutting down ASR engine...")
+            
+            # Clean up PyAudio resources
+            if hasattr(self, 'pyaudio') and self.pyaudio is not None:
+                self.pyaudio.terminate()
+                self._debug_print("PyAudio terminated")
+            
+            # Clean up Whisper model resources
+            if hasattr(self, 'engine') and self.engine is not None:
+                del self.engine
+                self._debug_print("Whisper model resources cleaned up")
+            
+            # Clean up temporary audio file if it exists
+            if hasattr(self, 'WAVE_OUTPUT_FILENAME') and os.path.exists(self.WAVE_OUTPUT_FILENAME):
+                os.remove(self.WAVE_OUTPUT_FILENAME)
+                self._debug_print("Temporary audio file cleaned up")
+            
+            self.logging_manager.add_message("ASREngine shutdown complete", level="INFO", source="ASREngine")
+            
+        except Exception as e:
+            self._debug_print(f"Error during ASR engine shutdown: {e}")
+            self.logging_manager.add_message(f"Error during ASREngine shutdown: {e}", level="ERROR", source="ASREngine")
+
 
 class SpeechEngine:
+    """Main speech engine combining TTS and ASR functionality."""
     
-    def __init__(self):
-        self.tts_engine = TTSEngine()
-        self.asr_engine = ASREngine()
+    def __init__(self, debug: bool = False):
+        """
+        Initialize the speech engine.
+        
+        Args:
+            debug (bool): Enable debug logging for all components
+        """
+        self.logging_manager = LoggingManager()
+        self.logging_manager.add_message("Initiating - SpeechEngine", level="INFO", source="SpeechEngine")
+        
+        self.debug = debug
+        self.tts_engine = TTSEngine(debug=debug)
+        self.asr_engine = ASREngine(debug=debug)
+        
+        if self.debug:
+            print("[SPEECH ENGINE DEBUG] Speech engine initialized")
 
-
-def test_tts():
-    text = "Welcome to the world of speech synthesis! This is a demonstration of text-to-speech with a real-time audio visualizer. You can press the spacebar at any time to interrupt the playback."
-    from src.interface.speech_engine import TTSEngine
-    from src.interface.speech_visualizer import AudioVisualizer
-
-    # In your PyQt UI class:
-    audio_display = AudioVisualizer(width=600, height=200)
     
-    tts_engine = TTSEngine(visualizer=audio_display)
-
-    # To play and visualize:
-    tts_engine.play_synthesized_audio_with_led_visualizer(text)
+    
+    def speak(self, text: str, stream: bool = False, visualize: bool = True, mute: bool = False) -> Union[Tuple[str, str], Generator[str, None, None]]:
+        """
+        Speak the given text using TTS.
+        
+        Args:
+            text (str): Text to speak
+            stream (bool): Whether to stream text character by character
+            visualize (bool): Whether to show LED visualization
+            mute (bool): Whether to mute audio output
+            
+        Returns:
+            Union[Tuple[str, str], Generator[str, None, None]]: 
+                If stream=True: Generator yielding characters
+                If stream=False: Tuple of (spoken_text, unspoken_text)
+        """
+        if self.debug:
+            print(f"[SPEECH ENGINE DEBUG] Speaking text - Stream: {stream}, Visualize: {visualize}, Mute: {mute}; Text: '{text}...'")
+        try:
+            x = self.tts_engine.play_synthesized_audio(
+                text, stream=stream, mute=mute
+            ) # visualize=visualize,
+        except Exception as e:
+            if self.debug:
+                print(f"[SPEECH ENGINE DEBUG] Error during speak: {e}")
+            self.logging_manager.add_message(f"Error during speak: {e}", level="ERROR", source="SpeechEngine")
+            return ("", text) if not stream else iter([])
+        return x
+        
+    
+    def listen(self, duration: int = 5) -> Optional[str]:
+        """
+        Listen for speech input and transcribe it.
+        
+        Args:
+            duration (int): Maximum recording duration in seconds
+            
+        Returns:
+            Optional[str]: Transcribed text or None if transcription fails
+        """
+        if self.debug:
+            print(f"[SPEECH ENGINE DEBUG] Listening for speech")
+        
+        return self.asr_engine.record_and_transcribe()
+    
+    def close(self) -> None:
+        """Gracefully shutdown all speech engine resources."""
+        try:
+            if self.debug:
+                print("[SPEECH ENGINE DEBUG] Shutting down speech engine...")
+            
+            # Close TTS engine
+            if hasattr(self, 'tts_engine') and self.tts_engine is not None:
+                self.tts_engine.close()
+            
+            # Close ASR engine
+            if hasattr(self, 'asr_engine') and self.asr_engine is not None:
+                self.asr_engine.close()
+            
+            self.logging_manager.add_message("SpeechEngine shutdown complete", level="INFO", source="SpeechEngine")
+            
+            if self.debug:
+                print("[SPEECH ENGINE DEBUG] Speech engine shutdown complete")
+                
+        except Exception as e:
+            if self.debug:
+                print(f"[SPEECH ENGINE DEBUG] Error during speech engine shutdown: {e}")
+            self.logging_manager.add_message(f"Error during SpeechEngine shutdown: {e}", level="ERROR", source="SpeechEngine")
+    
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit with automatic cleanup."""
+        self.close()

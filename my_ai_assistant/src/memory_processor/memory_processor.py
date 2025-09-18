@@ -640,8 +640,8 @@ class MemoryProcessor:
             # Get existing messages for the date
             self.logging_manager.add_message(f"Adding to conversation memory for {date}", level="INFO", source="MemoryProcessor")
             existing_messages = await self.get_conversations_by_date(date)
-            print("\n\n***existing_messages***\n\n")
-            print(existing_messages)
+            # print("\n\n***existing_messages***\n\n")
+            # print(existing_messages)
             # Combine with new messages
             if not existing_messages:
                 combined_messages = messages
@@ -651,8 +651,8 @@ class MemoryProcessor:
                     combined_messages = existing_messages
                 else:
                     combined_messages = messages
-            print("\n\ncombined_messages\n\n")
-            print(combined_messages)
+            # print("\n\ncombined_messages\n\n")
+            # print(combined_messages)
             # Store updated messages
 
             # convert [MessageContent] into json here
