@@ -1,26 +1,21 @@
-from asyncio import subprocess
-import json
-import json
-import logging
 import asyncio
-import multiprocessing
-from pathlib import Path
-from pyngrok import ngrok
-from fastapi import APIRouter, FastAPI, HTTPException
-from pydantic import BaseModel
+import threading
+import time
+import pygame
 
-from src.core.api_server.api import MyAIChatAPI
+from src.config.config import load_config
+
+from src.memory_processor.memory_processor import MemoryProcessor
+# from src.core.api_server.api import MyAIChatAPI
 from src.core.my_ai_assistant import MyAIAssistant
 from src.inference_engine.inference_processor import InferenceProcessor
-from my_ai.src.memory_processor.memory_processor import MemoryProcessor
 from src.interface.speech_engine import SpeechEngine
-from my_ai.src.utils.my_ai_utils import load_config
 from src.utils.log_manager import LoggingManager
 
-import uvicorn
+# import uvicorn
 
 class MyAI:
-    def __init__(self, is_gui_enabled=False):
+    def __init__(self, is_gui_enabled=True):
         self.logging_manager = LoggingManager()
         self.is_gui_enabled = is_gui_enabled
         self.is_loading: bool = False
@@ -30,96 +25,188 @@ class MyAI:
         self.speech_engine = None
         self.conveversation_history_engine = None
         self.inference_processor = None
+        self.terminal_console = None
+        self.console_thread = None
+
     
-    """
-    async def start_fastapi_server(app):
-        # tunnel
-        config = load_config("src/config.json")
-        if config.get('public_api'):
-            public_url = ngrok.connect(9999).public_url
-            print(f"Public URL: {public_url}") 
-        config = uvicorn.Config(app, host="0.0.0.0", port=9999)
-        server = uvicorn.Server(config)
-        await server.serve()
-    """
+    def start_loading_terminal(self):
+        """Start the terminal console in a separate thread"""
+        from src.core.intro_terminal import IntroTerminal
+        # Initialize pygame for the intro UI
+        pygame.init()
+        print("-------------- Starting My AI --------------")
+        self.terminal_console = IntroTerminal()
+        
+        # Redirect logging to console
+        self.logging_manager.subscribe(self.terminal_console.add_log_message)
+    
+    def stop_loading_terminal(self):
+        """Safely stop the terminal console"""
+        if self.terminal_console:
+            self.terminal_console.close()
+            # Give it a moment to close properly
+            time.sleep(0.5)
+            self.terminal_console = None
 
     async def run(self):
-        self.is_loading: bool = True
+        # Start terminal console first
+        self.start_loading_terminal()
+        time.sleep(1)  # Give some time for the terminal to initialize
+        
         try:
-            print('MyAI Initiating ...')
-            #logger.info("MyAI Initiating ...")
-            self.logging_manager.add_message("MyAI Initiating ..", level="INFO", source="MyAI")
-            self.config = load_config("src/config.json")
+            # Add initial message
+            self.logging_manager.add_message("System starting...", level="INFO", source="MyAI")
             
-            self.speech_engine = SpeechEngine()
-            self.logging_manager.add_message("Speech engine loaded successfully", level="INFO", source="MyAI")
+            # Give the terminal time to display the initial message
+            for _ in range(30):  # Run a few frames to display the initial message
+                if not self.terminal_console or not self.terminal_console.running:
+                    break
+                if not self.terminal_console.run_frame():
+                    break
+                await asyncio.sleep(0.016)
             
-            self.memory_processor = MemoryProcessor()
-            asyncio.run(self.memory_processor.connect())
-            self.logging_manager.add_message("Connected to memory services", level="INFO", source="MyAI")
+            # Keep the terminal running while we load components
+            loading_complete = False
+            components_loaded = False
             
-            
-            self.inference_processor = InferenceProcessor()
-            self.logging_manager.add_message("Inference engine initiated", level="INFO", source="MyAI")
-
-            # check if inference server started or not
-            self.server_running = await self.inference_processor._check_inference_server_health()
-            # check inference server health
-            
-            
-            if self.server_running:
-                #logger.info("LLM server running")
-                app = FastAPI()
-
-                @app.get("/")
-                def read_root():
-                    return {"message": "My AI API!"}
-
-                self.chat_api = MyAIChatAPI(my_ai_assistant=self.my_ai_assistant)
-                app.include_router(self.chat_api.router)
-                
-                if self.config.get('api_only'):  
-                    # start my_ai api server only
-                    if self.config.get('public_api'):
-                       public_url = ngrok.connect(9999).public_url
-                       print(f"Public URL: {public_url}")          
-                    uvicorn.run(app, host="0.0.0.0", port=9999)
-                    self.logging_manager.add_message("MyAI API server initiated", level="INFO", source="MyAI")
-                    pass
+            while self.terminal_console and self.terminal_console.running and not loading_complete:
+                # Run one frame of the terminal
+                if not self.terminal_console.run_frame():
+                    break
                     
-                else:
-                    self.my_ai_assistant = MyAIAssistant(inference_processor=self.inference_processor,
-                                        memory_processor=self.memory_processor,
-                                        speech_engine=self.speech_engine)
-                    #logger.info("AI Assistant initialized successfully")
-                    # TODO: starts MyAI with the FastAPI server
-                    # start FastAPI serrver 'app' parallaly of concurrently to the my_ai.run and gui
-                    # asyncio.run(my_ai_run(my_ai, app, config)) 
-                    
-            
-                self.logging_manager.add_message("System started successfully", level="INFO", source="MyAI")
+                # Only load components once
+                if not components_loaded:
+                    self.is_loading = True
+                    try:
+                        print('MyAI Initiating ...')
+                        self.logging_manager.add_message("Initiating MyAI...", level="INFO", source="MyAI")
+                        
+                        # Run terminal frames to display the message
+                        for _ in range(30):
+                            if not self.terminal_console or not self.terminal_console.running:
+                                break
+                            if not self.terminal_console.run_frame():
+                                break
+                            await asyncio.sleep(0.016)
+                        
+                        self.config = load_config("src/config/config.json")
+                        self.logging_manager.add_message("Configuration loaded", level="INFO", source="MyAI")
+                        
+                        # Run terminal frames to display the message
+                        for _ in range(30):
+                            if not self.terminal_console or not self.terminal_console.running:
+                                break
+                            if not self.terminal_console.run_frame():
+                                break
+                            await asyncio.sleep(0.016)
+                        
+                        self.speech_engine = SpeechEngine(debug=True)
+                        self.logging_manager.add_message("Speech engine loaded successfully", level="INFO", source="MyAI")
+                        
+                        # Run terminal frames to display the message
+                        for _ in range(30):
+                            if not self.terminal_console or not self.terminal_console.running:
+                                break
+                            if not self.terminal_console.run_frame():
+                                break
+                            await asyncio.sleep(0.016)
+                        
+                        self.memory_processor = MemoryProcessor()
+                        await self.memory_processor.connect()
+                        self.logging_manager.add_message("Connected to memory services", level="INFO", source="MyAI")
+                        
+                        # Run terminal frames to display the message
+                        for _ in range(30):
+                            if not self.terminal_console or not self.terminal_console.running:
+                                break
+                            if not self.terminal_console.run_frame():
+                                break
+                            await asyncio.sleep(0.016)
+                        
+                        self.inference_processor = InferenceProcessor()
+                        self.logging_manager.add_message("Inference engine initiated", level="INFO", source="MyAI")
+                        
+                        # Run terminal frames to display the message
+                        for _ in range(30):
+                            if not self.terminal_console or not self.terminal_console.running:
+                                break
+                            if not self.terminal_console.run_frame():
+                                break
+                            await asyncio.sleep(0.016)
 
-            else:
-                self.logging_manager.add_message("LLM server not running", level="ERROR", source="MyAI")
+                        try:
+                            self.my_ai_assistant = MyAIAssistant(
+                                    inference_processor=self.inference_processor,
+                                    memory_processor=self.memory_processor,
+                                    speech_engine=self.speech_engine
+                                )
+                            self.logging_manager.add_message("MyAI Assistant initialized successfully", level="INFO", source="MyAI")
+                        except Exception as e:
+                            self.logging_manager.add_message(f"Error initializing MyAIAssistant: {str(e)}", level="ERROR", source="MyAI")
+                            raise e
+                        
+                        # Run terminal frames to display the final messages
+                        for _ in range(30):
+                            if not self.terminal_console or not self.terminal_console.running:
+                                break
+                            if not self.terminal_console.run_frame():
+                                break
+                            await asyncio.sleep(0.016)
 
-            
-            if not self.is_gui_enabled:
-                self.my_ai_assistant.run()
-            
-            self.is_loading: bool = False
-            self.logging_manager.add_message("MyAI started successfully", level="INFO", source="MyAI")
-
-
+                        components_loaded = True
+                        self.logging_manager.add_message("Initializing UI...", level="INFO", source="MyAI")
+                        
+                        # Run terminal frames to display the final message
+                        for _ in range(60):  # Give more time for final message
+                            if not self.terminal_console or not self.terminal_console.running:
+                                break
+                            if not self.terminal_console.run_frame():
+                                break
+                            await asyncio.sleep(0.016)
+                        
+                        loading_complete = True
+                        
+                    except Exception as e:
+                        self.is_loading = False
+                        self.logging_manager.add_message(f"Error during initialization: {str(e)}", level="ERROR", source="MyAI")
+                        # Run terminal frames to display error
+                        for _ in range(120):  # Show error for longer
+                            if not self.terminal_console or not self.terminal_console.running:
+                                break
+                            if not self.terminal_console.run_frame():
+                                break
+                            await asyncio.sleep(0.016)
+                        raise Exception(f"Error during initialization: {str(e)}")
                 
-            # make conversation summarizer as a separet appliaction, like llama_cpp server
-            # summariser = ConversationSummarizer(inference_engine=innference_engine, conversation_history_processor=conversation_history_processor, app_config=app_config)
-            # summariser.summarise_and_process_conversation()
-            # concurrent
-            # summariser.start_summarization_thread()
-        except Exception as e:
-            #logger.error(f"Error during initialization: {str(e)}")
-            self.loading: bool = False
-            raise Exception(f"Error during initialization: {str(e)}")
-    
+                # Small delay between frames
+                await asyncio.sleep(0.016)
+            
+            # Stop the terminal before starting the UI
+            self.stop_loading_terminal()
+            
+            # Small delay to ensure pygame is properly cleaned up
+            time.sleep(0.5)
+            
+            # Initialize pygame again for the UI
+            pygame.init()
+            
+            # init MyAIUI here
+            from src.interface.ui.my_ai_ui import MyAIUI
+            self.my_ai_ui = MyAIUI(my_ai_assistant=self.my_ai_assistant)
+            
+            # Add debugging before running UI
+            try:
+                await self.my_ai_ui._run()
+            except Exception as ui_error:
+                print(f"UI Error: {str(ui_error)}")
+                raise ui_error
+            
+            self.is_loading = False
+            
+        except KeyboardInterrupt:
+            print("Interrupted by user")
+        finally:
+            self.stop_loading_terminal()
+        
     def __run__(self):
         asyncio.run(self.run())

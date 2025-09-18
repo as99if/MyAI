@@ -1,9 +1,12 @@
 
 MyAI
 
+** check out apple fastvlm and its webgpu demo for live camera feed interpretation
+https://huggingface.co/spaces/apple/fastvlm-webgpu/tree/main?clone=true
 
-video - https://www.gradio.app/docs
-audio -. https://www.gradio.app/guides/conversational-chatbot
+# TODO: reorganize speech engine and my_ai_assistant to generate reply through TTS (with or without audio, visualization and stream)
+
+sudo python -m src.interface.ui.ui
 
 
 Lightweight local AI voice assistant with multiple functionalities, targetted for edge devices or macos.
@@ -12,11 +15,10 @@ Omni like software (eh?) - but with multiple LLM/VLM, ASR, TTS and Object detect
 Used stack:
 - llama.cpp (llama-cpp-python) server
 - whisper.cpp (pywhispercpp)
-- kokoro-onnx
+- piper tts
 - redis
 
   
-curl silero models for stt tts and vad
 ```shell
 
 # macos
@@ -97,13 +99,6 @@ https://github.com/AK391/moshi
 
 
 ---
-replace google (if good)
-https://github.com/jina-ai/node-serp - not good
-
-google cloud console api's (asif.drmc21 - project Gemini API)
-(https://console.cloud.google.com/google/maps-apis/api-list?inv=1&invt=AboExg&project=gen-lang-client-0930623728)
-(https://developers.google.com/maps/documentation/route-optimization/client-libraries#python)
-https://github.com/googlemaps/google-maps-services-python
 
 ----------
 

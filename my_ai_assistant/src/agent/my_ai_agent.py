@@ -47,41 +47,66 @@ class MyAIAgent:
         self.tools = None
         self.system_prompts = load_prompt()
         self.agent = None
+        self.connected: bool = False
 
-        asyncio.run(self.initialize_mcp_client())
-        self.logging_manager.add_message(
-            "MCP Client initiated", level="INFO", source="MyAIAgent"
-        )
+
+        # asyncio.create_task(self.initialize_mcp_client())
+        # self.logging_manager.add_message(
+        #     "MCP Client initiated", level="INFO", source="MyAIAgent"
+        # )
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self.initialize_mcp_client())
+            self.logging_manager.add_message(
+                "MCP Client initialization scheduled", level="INFO", source="MyAIAgent"
+            )
+        except RuntimeError:
+            # No running loop yet (e.g., constructed in sync context like Qt startup)
+            self.logging_manager.add_message(
+                "No running event loop; defer MCP init. Later call: await my_ai_agent.initialize_mcp_client()",
+                level="WARNING",
+                source="MyAIAgent",
+            )
 
     
     
     async def initialize_mcp_client(self):
-        self.my_ai_mcp_server_params = SSEConnection(
-            url="http://localhost:50002/sse", transport="sse"
-        )
-        async with sse_client(url="http://localhost:50002/sse") as (read, write):
-            async with ClientSession(read, write) as session:
-                # Initialize the connection
-                await session.initialize()
+        try:
+            self.my_ai_mcp_server_params = SSEConnection(
+                url="http://localhost:50002/sse", transport="sse"
+            )
+            async with sse_client(url="http://localhost:50002/sse") as (read, write):
+                async with ClientSession(read, write) as session:
+                    # Initialize the connection
+                    await session.initialize()
 
-                # List available prompts
-                # prompts = await session.list_prompts()
+                    # List available prompts
+                    # prompts = await session.list_prompts()
 
-                # Get a prompt
-                # prompt = await session.get_prompt(
-                #     "example-prompt", arguments={"arg1": "value"}
-                # )
+                    # Get a prompt
+                    # prompt = await session.get_prompt(
+                    #     "example-prompt", arguments={"arg1": "value"}
+                    # )
 
-                # List available resources
-                # resources = await session.list_resources()
+                    # List available resources
+                    # resources = await session.list_resources()
 
-                # Get tools
-                self.tools = await load_mcp_tools(session)
-                # print(self.tools)
-                self.available_tools_prompt = "\nThese are the available tools:\n"
-                # List available tools
-                for tool in self.tools:
-                    self.available_tools_prompt += f"** Name: {tool.name}, Description: {tool.description}, Parameter Schema: {tool.args_schema}\n"
+                    # Get tools
+                    self.tools = await load_mcp_tools(session)
+                    # print(self.tools)
+                    self.available_tools_prompt = "\nThese are the available tools:\n"
+                    # List available tools
+                    for tool in self.tools:
+                        self.available_tools_prompt += f"** Name: {tool.name}, Description: {tool.description}, Parameter Schema: {tool.args_schema}\n"
+                    self.connected = True
+                    self.logging_manager.add_message(
+                        "MCP Client connected and tools loaded", level="INFO", source="MyAIAgent"
+                    )
+        except Exception as e:
+            self.connected = False
+            self.logging_manager.add_message(
+                f"Error initializing MCP client: {e}", level="ERROR", source="MyAIAgent"
+            )
 
 
     async def local_agent_inference(self, messages: List[MessageContent], if_tool_call: bool = False, json_mode: bool = False) -> MessageContent:

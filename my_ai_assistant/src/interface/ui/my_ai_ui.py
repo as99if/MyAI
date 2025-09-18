@@ -1,279 +1,317 @@
+"""
+MyAIUI
+
+This module implements a simple, terminal-style chatbot UI using pygame.
+Features:
+- Dark terminal-like theme
+- Adjustable font size and font
+- buttons and rectangles are not rounded
+- Three main areas: scrollable conversation display and multi-line text input on the left column,  a log viewer on the right column 
+- Input can be submitted with Enter key or Send button
+- Conversation area is scrollable with mouse wheel
+- Messages can be appended programmatically
+- log viewer will get updated from log_manager
+
+Classes:
+    MyAIUI: Main class for the chatbot UI.
+"""
+
 import asyncio
-from datetime import datetime
-import json
+import datetime
 import pprint
-import gradio as gr
-from typing import List, Dict, Any, Optional, Tuple
-from src.utils.my_ai_utils import format_messages
-from src.memory_processor.memory_processor import MemoryProcessor
+import pygame
+import pygame.freetype
+import sys
+import os
+
 from src.core.api_server.data_models import ContentSegment, MessageContent
-from src.inference_engine.inference_processor import InferenceProcessor
-from src.utils.log_manager import LoggingManager
 from src.core.my_ai_assistant import MyAIAssistant
-from src.interface.ui.ui_utils import get_custom_css
-from src.interface.ui.styling import js_func
-from gradio import ChatMessage
-from gradio.themes.utils import sizes
+from src.interface.ui.components.buttons import SendButton
+from src.interface.ui.components.conversation_box import ConversationBox
+from src.interface.ui.components.log_viewer import LogViewer
+from src.interface.ui.components.audio_visualizer import AudioVisualizer
+from src.utils.log_manager import AgentLoggingManager, LoggingManager
 
-class MyAIInterface:
-    def __init__(self, memory_processor: Optional[MemoryProcessor] = None, inference_processor: Optional[InferenceProcessor] = None, my_ai_assistant: Optional[MyAIAssistant] = None):
-        self.logging_manager = LoggingManager()
-        self.logging_manager.subscribe(self.update_log_display)
+# Add the utils directory to the path to import log_manager
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utils'))
 
-        self.enable_agent = False
-        self.memory_processor: MemoryProcessor = memory_processor
-        self.inference_processor: InferenceProcessor = inference_processor
-        self.my_ai_assistant: MyAIAssistant = my_ai_assistant
-        self.interface = self.build_interface()
 
-        self._initialize_my_ai()
-    
-    def _initialize_my_ai(self):
-        """Initialize the AI components if not provided during instantiation"""
-        try:
-            if not self.memory_processor:
-                self.memory_processor = MemoryProcessor()
-                asyncio.run(self.memory_processor.connect())
+# --- Configurable Variables ---
+FONT_SIZE = 15  # Adjust this to change font size
+FONT_NAME = "DejaVuSansMono"  # Linux terminal-like font
+MAX_INPUT_LINES = 6
 
-            if not self.inference_processor:
-                self.inference_processor = InferenceProcessor()
-            
-            if not self.my_ai_assistant:
-                self.my_ai_assistant = MyAIAssistant(
-                    memory_processor=self.memory_processor,
-                    inference_processor=self.inference_processor,
-                )
-            
-            self.is_my_ai_initialized = True
-            self.log_message("MyAIUI initialized successfully", "INFO")
-        except Exception as e:
-            self.log_message(f"Failed to initialize MyAIUI: {str(e)}", "ERROR")
-            raise
-    
-    def log_message(self, message: str, level: str = "INFO") -> str:
-        """Add a log message to the logging panel"""
-        self.logging_manager.add_message(message, level, source="MY_AI_UI")
-        return self.logging_manager.get_logs()
+# --- Colors for Dark Terminal Theme ---
+COLORS = {
+    'bg': (30, 32, 34),
+    'input_bg': (40, 42, 46),
+    'convo_bg': (24, 26, 28),
+    'log_bg': (28, 30, 32),
+    'text': (204, 204, 204),
+    'user': (80, 200, 120),
+    'ai': (120, 180, 255),
+    'log': (180, 180, 120),
+    'button_bg': (60, 63, 65),
+    'button_pressed': (80, 83, 85),
+    'button_text': (220, 220, 220),
+    'scrollbar_bg': (50, 52, 54),
+    'scrollbar_fg': (90, 92, 94)
+}
 
-    def update_log_display(self, logs: str):
-        if hasattr(self, 'log_display'):
-           self.log_display.value = logs
+WIDTH, HEIGHT = 1200, 800
+INPUT_HEIGHT = 90
+PADDING = 6
+BUTTON_WIDTH = 40
+BUTTON_HEIGHT = 40
+SCROLLBAR_WIDTH = 12
+LOG_PANEL_WIDTH = 400  # Width of the log panel on the right
+
+class MyAIUI:
+    """
+    Implements a terminal-style chatbot UI using pygame.
+    """
+
+    def __init__(self, my_ai_assistant:MyAIAssistant=None):
+        """
+        Initialize the UI, pygame, fonts, rectangles, and state variables.
+        """
+        # pygame.init()
+        self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
+        pygame.display.set_caption("MyAI Terminal Chat")
+        self.font = pygame.freetype.SysFont(FONT_NAME, FONT_SIZE)
+        self.clock = pygame.time.Clock()
+        self.running = True
         
-
-    def toggle_agent(self, value=None):
-        """Toggle or set the agent enabled state"""
-        if value is not None:
-            self.enable_agent = value
+        # Initialize logging managers
+        self.log_manager = LoggingManager()
+        self.agent_log_manager = AgentLoggingManager()
+        
+        # Setup layout
+        self.setup_layout()
+        
+        # Subscribe to log updates
+        self.log_manager.subscribe(self.update_log_content)
+        self.agent_log_manager.subscribe(self.update_log_content)
+        
+        self.my_ai_assistant = my_ai_assistant
+        if self.my_ai_assistant is None:
+            self.log_manager.add_message("MyAIAssistant not connected", "INFO", "MyAIUI")
         else:
-            self.enable_agent = not self.enable_agent
-        
-        status = 'enabled' if self.enable_agent else 'disabled'
-        self.log_message(f"Agent {status}", "INFO")
-        return self.enable_agent
+            # Setup TTS callbacks for audio visualization
+            if hasattr(self.my_ai_assistant.speech_engine, 'tts_engine'):
+                tts_engine = self.my_ai_assistant.speech_engine.tts_engine
+                tts_engine.set_audio_data_callback(self.audio_visualizer.set_audio_data)
+                tts_engine.set_playback_position_callback(self.audio_visualizer.set_playback_state)
+                tts_engine.set_text_stream_callback(self._handle_tts_text_stream)
     
+        self.conversation.add_ai_response([f"------------------------------"])
 
-    async def get_chat_completion(self, message: MessageContent, if_agent:bool, nb_retries:int=3, delay:int=30) -> Tuple[MessageContent, List[MessageContent]]:
+    def setup_layout(self):
         """
-        Sends a request to the ChatGPT API to retrieve a response based on a list of previous messages.
+        Setup the component layout and initialize all UI components.
         """
-        response = None
-        recent_conversation = None
-        try:
-            # print("*****MESSAGE****")
+        # Adjust layout to include audio visualizer
+        left_column_width = WIDTH - LOG_PANEL_WIDTH - 3 * PADDING
+        
+        # Split left column into conversation (top) and audio visualizer (bottom)
+        visualizer_height = 200
+        conversation_height = HEIGHT - visualizer_height - 3 * PADDING
+        
+        # Left column rectangles
+        conversation_rect = pygame.Rect(PADDING, PADDING, 
+                                       left_column_width - SCROLLBAR_WIDTH, 
+                                       conversation_height)
+        conversation_scrollbar_rect = pygame.Rect(left_column_width - SCROLLBAR_WIDTH, PADDING, 
+                                                 SCROLLBAR_WIDTH, conversation_height)
+        
+        # Audio visualizer rectangle
+        visualizer_rect = pygame.Rect(PADDING, PADDING + conversation_height + PADDING,
+                                     left_column_width, visualizer_height)
+        
+        # Right column rectangles (log panel)
+        log_x = left_column_width
+        
+        log_rect = pygame.Rect(log_x, PADDING, LOG_PANEL_WIDTH - SCROLLBAR_WIDTH - PADDING, 
+                              HEIGHT - 2 * PADDING)
+        
+        # TODO: add a component to visualize audio fr levels with colors
+        log_scrollbar_rect = pygame.Rect(log_x + LOG_PANEL_WIDTH - SCROLLBAR_WIDTH - PADDING, PADDING, 
+                                        SCROLLBAR_WIDTH, HEIGHT - 2 * PADDING)
+        
+        # Initialize components
+        # self.text_input = UserMessageInput(input_rect, self.font, COLORS, MAX_INPUT_LINES, PADDING)
+        # self.text_input.set_submit_callback(self.handle_user_input)
+        
+        self.conversation = ConversationBox(conversation_rect, conversation_scrollbar_rect, self.font, COLORS, PADDING)
+        self.conversation.set_submit_callback(self.handle_user_input)
+        self.audio_visualizer = AudioVisualizer(visualizer_rect, self.font, COLORS, PADDING)
+        self.log_viewer = LogViewer(log_rect, log_scrollbar_rect, self.font, COLORS, PADDING)
+        
+        # self.send_button = SendButton(button_rect, self.font, COLORS)
+        # self.send_button.set_click_callback(self.text_input.submit_text)
+        
+        # Store components for easy iteration
+        # self.components = [self.text_input, self.conversation, self.log_viewer, self.send_button]
+        self.components = [self.conversation, self.log_viewer, self.audio_visualizer]
+
+    def _handle_tts_text_stream(self, text_chunk: str):
+        """
+        Handle streaming text updates from TTS engine.
+        
+        Args:
+            text_chunk (str): New text chunk from TTS.
+        """
+        # This can be used to update the conversation in real-time
+        # For now, we'll just pass it to the audio visualizer
+        pass
+
+    async def handle_user_input(self, text):
+        """
+        Handle user text content from ConversationBox or anywhere and pass tho MyAIAssistant.
+        
+        Args:
+            text (str): The user's input text.
+        """
+        
+        if self.my_ai_assistant is None:
+            self.log_manager.add_message("MyAIAssistant not connected", "INFO", "MyAIUI")
+            self.conversation.add_ai_response(["MyAIAssistant not connected"])
+            return
+        else:
+            message = self.my_ai_assistant.process_input("User", text=text)
             # pprint.pprint(message)
-            response, recent_conversation = await self.my_ai_assistant.process_and_create_chat_generation(
-                message=message,
-                is_tool_call_permitted=if_agent
+            self.conversation.add_message("User", text)
+            responses, recent_conversations = await self.my_ai_assistant.process_and_create_chat_generation(
+                message=message
             )
-            # print("*****RESPONSE****")
-            # pprint.pprint(response)
-            
-            return response, recent_conversation
+            # pprint.pprint(f"*** --- Responses conversations:\n{pprint.pformat(responses)}")
+
+            # pprint.pprint(f"*** --- Recent conversations:\n{pprint.pformat(recent_conversations)}")
+        
+            # TODO: reply display will be handled from the TTS engine callback in the future
+            # if not SpeechEngine
+            # for response in responses:
+            self.conversation.add_ai_response(responses)  # Display first response for now
+        
+        # self.append_message("AI","another mock reply from AI") 
+        
+        return
+
+    def update_log_content(self, logs):
+        """
+        Update the log content when logs change.
+        
+        Args:
+            logs (str): The updated log content.
+        """
+        # Combine both system and agent logs
+        system_logs = self.log_manager.get_logs()
+        agent_logs = self.agent_log_manager.get_logs()
+        
+        if system_logs and agent_logs:
+            combined_logs = system_logs + "\n" + agent_logs
+        elif system_logs:
+            combined_logs = system_logs
+        elif agent_logs:
+            combined_logs = agent_logs
+        else:
+            combined_logs = ""
+        
+        self.log_viewer.update_content(combined_logs)
+
+    def append_message(self, sender, text):
+        """
+        Append a message to the conversation area.
+
+        Args:
+            sender (str): The sender of the message ("User" or "AI").
+            text (str): The message content.
+        """
+        self.conversation.add_message(sender, text)
+
+
+    def draw(self):
+        """
+        Render the entire UI.
+        """
+        self.screen.fill(COLORS['bg'])
+        
+        # Draw all components
+        for component in self.components:
+            component.draw(self.screen)
+        
+        pygame.display.flip()
+    
+    def graceful_exit(self):
+        """
+        Handle graceful shutdown of the UI and cleanup resources.
+        """
+        self.log_manager.add_message("UI shutting down", "INFO", "MyAIUI")
+        
+        # Unsubscribe from log updates
+        try:
+            self.my_ai_assistant.exit_gracefully()
         except Exception as e:
-            self.log_message(f"Error getting response: {e}")
+            self.log_manager.add_message("Error in usnsubscribing from MyAIAssistant", "INFO", "MyAIUI")
+            
+        try:
+            self.log_manager.unsubscribe(self.update_log_content)
+            self.agent_log_manager.unsubscribe(self.update_log_content)
+        except Exception as e:
+            print(f"Error unsubscribing from logs: {e}")
+            self.log_manager.add_message("Error in unsubscribing from logs", "INFO", "MyAIUI")
+        
+        # Set running to False to exit main loop
+        self.running = False
+        
+        # Quit pygame
+        pygame.quit()
+
+    async def _run(self):
+        """
+        Main loop for the UI. Handles events and updates the display.
+        """
+        # Add some initial log messages for testing
+        self.log_manager.add_message("UI initialized", "INFO", "MyAIUI")
+        self.agent_log_manager.add_message("test log", "INFO", "MyAIUI")
+        
+        try:
+            while self.running:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        self.graceful_exit()
+                        return
+                    else:
+                        # Pass events to all components
+                        for component in self.components:
+                            if component.has_async_event_handler:
+                                await component.handle_event(event)
+                            else:
+                                component.handle_event(event)
+                
+                # Update all components
+                for component in self.components:
+                    component.update()
+                
+                # Draw everything
+                self.draw()
+                self.clock.tick(60)
+        except KeyboardInterrupt:
+            self.log_manager.add_message("Received keyboard interrupt", "INFO", "MyAIUI")
+            self.graceful_exit()
+        except Exception as e:
+            self.log_manager.add_message(f"Unexpected error: {e}", "ERROR", "MyAIUI")
+            self.graceful_exit()
             raise
-    
-    def format_conversation_history(self, messages: List[MessageContent] = None)-> List[ChatMessage]:
-        """Removing the unspoken messages and system level prompts from conversation view"""
-        # print("*******before formatting for ui******")  
-        # pprint.pprint(messages)
-        _messages = []
-        for msg in messages:
-            if not msg.unspoken_message:
-                _messages.append(msg)
-        # print("\n\n*******after formatting for ui******")
-        # pprint.pprint(_messages)
-        return _messages
 
-    def get_reply(self, message, history, if_agent:bool = False):
+    def run(self):
         """
-        Predict the response of the chatbot and complete a running list of chat history.
+        Start the UI main loop.
         """
-        self.log_message(f"Sending user message: {message}")
-        
-        # Create message content object
-        _message = MessageContent(
-            role="user",
-            content=[ContentSegment(type="text", text=message)],
-            timestamp=datetime.now()
-        )
-        
+        asyncio.run(self._run())
 
-        _response, _recent_conversations = asyncio.run(self.get_chat_completion(_message, if_agent=if_agent))
-
-        self.log_message(f"Got response: {_response.content}")
-        # print("*******---response------******")
-        # pprint.pprint(_response)
-        # print("*******---------******\n\n")
-
-        # print("*******---recent_conversations------******")
-        # pprint.pprint(_recent_conversations)
-        # print("*******---------******\n\n")
-
-        # history.append(_response)
-        history = self.format_conversation_history(_recent_conversations)
-        history = format_messages(history)
-
-        # history.append(ChatMessage(role=_response.role, content=_response.content))
-        return history
-
-    def build_interface(self):
-        with gr.Blocks(
-            theme=gr.themes.Monochrome(text_size=sizes.text_sm),
-            css=get_custom_css(),
-            js=js_func,
-            fill_height=True,
-            fill_width=True,
-            elem_id="main_container"     
-        ) as interface:
-            gr.Markdown("# MyAI Assistant")
-            
-            with gr.Row(elem_id="main_content"):
-                with gr.Column(scale=2, elem_id="media_column"):
-                    with gr.Row(elem_id="video_container"):
-                        # square panel for video feed
-                        self.video_display = gr.TextArea(
-                            label="",
-                            lines=10,
-                            interactive=False,
-                            show_copy_button=True,
-                            container=False,
-                            elem_id="video_display"
-                        )
-                    with gr.Row(elem_id="audio_container"):
-                        # square panel for audio visualizer
-                        self.audio_display = gr.TextArea(
-                            label="",
-                            lines=10,
-                            interactive=False,
-                            show_copy_button=True,
-                            container=False,
-                            elem_id="audio_display"
-                        )
-                with gr.Column(scale=3, show_progress=True, elem_id="chat_column"):
-                    # Initialize chatbot component
-                    self.chatbot = gr.Chatbot(
-                        height="600px",
-                        show_label=False,
-                        container=True,
-                        type="messages",
-                        elem_id="chatbot_panel"
-                    )
-                with gr.Column(scale=2, elem_id="info_column"):
-                    
-                    with gr.Row(show_progress=True, elem_id="info_display_container"):
-                        self.something_display1 = gr.TextArea(
-                            label="",
-                            lines=10,
-                            interactive=False,
-                            show_copy_button=True,
-                            container=False,
-                            elem_id="info_display"
-                        )
-                    # Log viewer
-                    with gr.Row(
-                        show_progress=True,
-                        elem_id="logs_container",
-                    ):
-                        self.log_display = gr.TextArea(
-                            label="System Logs",
-                            lines=2,
-                            interactive=False,
-                            show_copy_button=True,
-                            container=False,
-                            elem_id="logs_panel"
-                        )
-                    
-            with gr.Row(elem_id="input_container"):
-                # Message input and send button
-                self.msg_input = gr.Textbox(
-                        label="User Message",
-                        placeholder="Type your message here...",
-                        container=False,
-                        stop_btn=True,
-                        show_copy_button=False,
-                        lines=3,
-                        submit_btn=True,
-                        show_label=False,
-                        elem_id="user_message"
-                    )
-            with gr.Row(elem_id="footer_elems"):
-                with gr.Column(scale=3, show_progress=True):
-                    self.something_display2 = gr.TextArea(
-                            label="",
-                            lines=2,
-                            interactive=False,
-                            show_copy_button=True,
-                            container=False,
-                            elem_id="footer_display"
-                        )
-                with gr.Column(scale=1):
-                    self.agent_btn = gr.Button(
-                            "Ask MyAI Agent",
-                            size="md",
-                            scale=1,
-                            variant="stop",
-                            elem_id="agent_button",
-                            elem_classes="inference_button"
-                        )
-            
-            # Setup event handlers
-            self._setup_event_handlers()
-        
-        interface.queue()
-        return interface
-    
-    def _setup_event_handlers(self):
-        """Set up all event handlers for the UI"""
-        # Send message handler - triggered by both button and Enter key
-
-        self.msg_input.submit(
-            fn=self.get_reply,
-            inputs=[self.msg_input, self.chatbot],
-            outputs=[self.chatbot],
-            api_name=False
-        ).then(
-            fn=lambda: "",
-            outputs=[self.msg_input]
-        ).then(
-            fn=self.logging_manager.get_logs,
-            outputs=[self.log_display]
-        )
-        
-        # Agent button handler
-        self.agent_btn.click(
-            fn=lambda msg, hist: self.get_reply(msg, hist, True),
-            inputs=[self.msg_input, self.chatbot],
-            outputs=[self.chatbot],
-            api_name="send_message"
-        ).then(
-            fn=lambda: "",
-            outputs=[self.msg_input]
-        ).then(
-            fn=self.logging_manager.get_logs,
-            outputs=[self.log_display]
-        )
-
+# Example usage
 if __name__ == "__main__":
-    chat_interface = MyAIInterface()
-    chat_interface.interface.launch(share=False, pwa=True)
+    ui = MyAIUI()
+    
+    ui.run()
