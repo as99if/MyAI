@@ -13,17 +13,16 @@ from datetime import datetime
 import pprint
 from typing import Any, List, Optional, Dict
 from langchain_openai import ChatOpenAI
-from pydantic import BaseModel
 import aiohttp
 import logging
+
+import requests
+from src.inference_engine.mock_llm_server import MockLLMServer
 from src.utils.log_manager import LoggingManager
 from src.config.config import load_config, load_prompt
 from src.core.api_server.data_models import MessageContent
 
-import requests
 from src.utils.my_ai_utils import format_messages
-
-
 
 
 class InferenceProcessor:
@@ -55,11 +54,14 @@ class InferenceProcessor:
         self.system_prompts = load_prompt()
         self.llm_name: str = None
         self.llm_inference_client = None
-        
+        self.server_running: bool = False
+
         self._initialize_llm_client()
-        self.logging_manager.add_message("Succesfully Initiated InferenceProcessor", level="INFO", source="InferenceProcessor")
-        self.logging_manager.add_message(f"LLM: {self.config.get('llm')}\nTool Call LM: {self.config.get('tool_call_lm')}", level="INFO", source="InferenceProcessor")
+
         
+        self.logging_manager.add_message("Succesfully Initiated InferenceProcessor", level="INFO", source="InferenceProcessor")
+
+    
     def _initialize_llm_client(self) -> None:
         """
         Initialize LLM clients with optimized parameters.
@@ -67,29 +69,69 @@ class InferenceProcessor:
         Uses Gemma-3 optimized parameters for inference.
         """
         try:
-            # Standard LLM client initialization with optimized parameters
-            self.llm_inference_client = ChatOpenAI(
-                base_url=self.config.get("base_url", "http://localhost:50001/v1"),
-                model_name=self.config.get("llm", "overthinker"), # gemma or overthinker
-                streaming=False,
-                api_key="None",
-                stop_sequences=["<end_of_turn>", "<eos>"],
-                temperature=1.0,
-                # repeat_penalty=1.0,
-                # top_k=64,
-                top_p=0.95,
-                n=2,
-                max_completion_tokens=512,
-            )
-            
+
+            # check if inference server started or not
+            self.server_running = self._check_inference_server_health()
+                        
+            if not self.server_running:
+                self.llm_inference_client = MockLLMServer()
+                self.llm_server_connected = False
+                self.logging_manager.add_message("Succesfully Initiated LLM Client. but, llm server connection failed", level="INFO", source="InferenceProcessor")
+                self.logging_manager.add_message(f"Connected to mock LLM server", level="INFO", source="InferenceProcessor")
+
+            else:                
+                # Standard LLM client initialization with optimized parameters
+                self.llm_inference_client = ChatOpenAI(
+                    base_url=self.config.get("base_url", "http://localhost:50001/v1"),
+                    model_name=self.config.get("llm", "overthinker"), # gemma or overthinker
+                    streaming=False,
+                    api_key="None",
+                    stop_sequences=["<end_of_turn>", "<eos>"],
+                    temperature=1.0,
+                    # repeat_penalty=1.0,
+                    # top_k=64,
+                    top_p=0.95,
+                    n=2,
+                    max_completion_tokens=512,
+                )
+                self.logging_manager.add_message("Succesfully Initiated LLM Client.", level="INFO", source="InferenceProcessor")
+                self.logging_manager.add_message(f"LLM: {self.config.get('llm')}\nTool Call LM: {self.config.get('tool_call_lm')}", level="INFO", source="InferenceProcessor")
+        
             
         except Exception as e:
+
             logging.error(f"Error initializing LLM client: {e}")
-            pass
+            self.logging_manager.add_message(f"Error initializing LLM client: {e}", level="ERROR", source="InferenceProcessor")
+ 
 
     
+    def _check_inference_server_health(self) -> bool:
+        """
+        Check inference server health status.
 
-    async def _check_inference_server_health(self) -> bool:
+        Returns:
+            bool: True if server is healthy, False otherwise
+
+        Raises:
+            Logs errors but doesn't raise exceptions
+        """
+        try:
+            response = requests.get("http://localhost:50001/v1/models", timeout=5)
+            if response.status_code == 200:
+                return True
+            else:
+                logging.error(
+                    f"Inference server health check failed with status: {response.status_code}"
+                )
+                return False
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Failed to connect to inference server: {str(e)}")
+            return False
+        except Exception as e:
+            logging.error(f"Unexpected error during health check: {str(e)}")
+            return False
+
+    async def _check_inference_server_health_async(self) -> bool:
         """
         Check inference server health status.
 
@@ -141,8 +183,7 @@ class InferenceProcessor:
         self.logging_manager.add_message("Inititating create_chat_completion", level="INFO", source="InferenceProcessor")
         # self.logging_manager.add_message(f"User prompt message:\n{messages}", level="INFO", source="InferenceProcessor")
             
-        is_server_alive: bool = await self._check_inference_server_health()
-        if not is_server_alive:
+        if not self.server_running:
             return MessageContent(
                 role="assistant",
                 timestamp=datetime.now().isoformat(),
@@ -175,7 +216,7 @@ class InferenceProcessor:
                 self.logging_manager.add_message(f"Formatted vision data", level="INFO", source="InferenceProcessor")
                 # formatted_messages =
 
-            print("invoking model")
+            # print("invoking model")
             self.logging_manager.add_message(f"Invoking model", level="INFO", source="InferenceProcessor")
             #print("*****---FORMATTED_MESSAGES--*****")
             #pprint.pprint(formatted_messages)
@@ -197,7 +238,55 @@ class InferenceProcessor:
         except Exception as e:
             raise Exception(f"Error during chat completion: {e}")
             
+    async def close(self) -> None:
+        """
+        Gracefully close and clean up resources.
+        
+        This method should be called when shutting down the InferenceProcessor
+        to ensure proper cleanup of async resources and connections.
+        """
+        try:
+            self.logging_manager.add_message("Initiating graceful shutdown of InferenceProcessor", level="INFO", source="InferenceProcessor")
+            
+            # Clean up LLM client resources
+            if hasattr(self.llm_inference_client, 'client') and hasattr(self.llm_inference_client.client, 'close'):
+                await self.llm_inference_client.client.close()
+            
+            # Clean up agent resources if they exist
+            if self.agent_executor is not None:
+                self.agent_executor = None
+            
+            if self.agent is not None:
+                self.agent = None
+            
+            # Clear client references
+            self.llm_inference_client = None
+            
+            self.logging_manager.add_message("Successfully closed InferenceProcessor resources", level="INFO", source="InferenceProcessor")
+            
+        except Exception as e:
+            self.logging_manager.add_message(f"Error during resource cleanup: {e}", level="ERROR", source="InferenceProcessor")
+            logging.error(f"Error closing InferenceProcessor resources: {e}")
 
+    def __del__(self):
+        """
+        Destructor to ensure resources are cleaned up if close() wasn't called explicitly.
+        """
+        if self.llm_inference_client is not None:
+            try:
+                # Try to run cleanup in case close() wasn't called
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # If there's already a running loop, schedule the cleanup
+                    asyncio.create_task(self.close())
+                else:
+                    # If no loop is running, run the cleanup
+                    asyncio.run(self.close())
+            except Exception:
+                # If async cleanup fails, just clear references
+                self.llm_inference_client = None
+                self.agent_executor = None
+                self.agent = None
 
 
 # Test execution

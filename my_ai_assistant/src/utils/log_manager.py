@@ -31,6 +31,11 @@ class LoggingManager:
         """Subscribe to log updates"""
         self.callbacks.append(callback)
     
+    def unsubscribe(self, callback):
+        """Unsubscribe from log updates"""
+        if callback in self.callbacks:
+            self.callbacks.remove(callback)
+    
     def _notify_subscribers(self):
         """Notify all subscribers of log updates"""
         for callback in self.callbacks:
@@ -66,6 +71,11 @@ class AgentLoggingManager:
     def subscribe(self, callback):
         """Subscribe to log updates"""
         self.callbacks.append(callback)
+    
+    def unsubscribe(self, callback):
+        """Unsubscribe from log updates"""
+        if callback in self.callbacks:
+            self.callbacks.remove(callback)
     
     def _notify_subscribers(self):
         """Notify all subscribers of log updates"""

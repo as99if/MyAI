@@ -1,9 +1,12 @@
 
 MyAI
 
+** check out apple fastvlm and its webgpu demo for live camera feed interpretation
+https://huggingface.co/spaces/apple/fastvlm-webgpu/tree/main?clone=true
 
-video - https://www.gradio.app/docs
-audio -. https://www.gradio.app/guides/conversational-chatbot
+# TODO: reorganize speech engine and my_ai_assistant to generate reply through TTS (with or without audio, visualization and stream)
+
+sudo python -m src.interface.ui.ui
 
 
 Lightweight local AI voice assistant with multiple functionalities, targetted for edge devices or macos.
@@ -12,26 +15,44 @@ Omni like software (eh?) - but with multiple LLM/VLM, ASR, TTS and Object detect
 Used stack:
 - llama.cpp (llama-cpp-python) server
 - whisper.cpp (pywhispercpp)
-- kokoro-onnx
+- piper tts
 - redis
 
   
-curl silero models for stt tts and vad
 ```shell
+
+# macos
 python3 -m venv .venv
 brew install portaudio
 brew install ffmpeg
 
 # fedora
+sudo dnf install gcc clang
+sudo dnf install @development-tools
+sudo dnf install cmake python3-devel
 sudo dnf install portaudio portaudio-devel
 sudo dnf install portaudio ffmpeg
 
+# to install pyQT in fedora
+sudo dnf install qt6-qtbase-devel
+
+
 pip install --upgrade pip
+pip install setuptools
 pip install -r requrements.txt
-make db-run  # for redis dbs
-python -m inference_server.serve # has both, text and multimodal model
+# make db-run  # for redis dbs
+
+# 1. run inference server
+python -m my_ai_inference_server.serve # has both, text and multimodal model
+
+# 2. run mcp server
+python -m my_ai_mcp_server.serve
 # python -m main # in another terminal, or run inference server as daemon
-python -m 
+
+# 3. run ui
+python -m my_ai_assistant.main
+
+
 brew install mactop
 sudo mactop
 ```
@@ -78,13 +99,6 @@ https://github.com/AK391/moshi
 
 
 ---
-replace google (if good)
-https://github.com/jina-ai/node-serp - not good
-
-google cloud console api's (asif.drmc21 - project Gemini API)
-(https://console.cloud.google.com/google/maps-apis/api-list?inv=1&invt=AboExg&project=gen-lang-client-0930623728)
-(https://developers.google.com/maps/documentation/route-optimization/client-libraries#python)
-https://github.com/googlemaps/google-maps-services-python
 
 ----------
 
