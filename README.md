@@ -1,6 +1,11 @@
 
 MyAI
 
+
+** use webcam and it's microphone, and integrate a macro keyboard
+
+** integrate with my custom lenovo device security manager
+
 ** check out apple fastvlm and its webgpu demo for live camera feed interpretation
 https://huggingface.co/spaces/apple/fastvlm-webgpu/tree/main?clone=true
 
